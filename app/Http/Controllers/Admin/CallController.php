@@ -28,7 +28,7 @@ class CallController extends Controller
         ]);
 
         $receiver = User::find($request->receiver_id);
-        broadcast(new CallOffer(Auth::id(), $receiver->id, $request->offer, $request->call_type))->toOthers();
+        broadcast(new CallOffer(Auth::id(), $receiver->id, $request->offer, $request->call_type));
 
         return response()->json(['status' => 'offer sent']);
     }

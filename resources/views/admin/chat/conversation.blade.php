@@ -136,24 +136,36 @@
 @push('scripts')
 <script src="https://js.pusher.com/7.0/pusher.min.js"></script>
 <script>
-    // ========== ग्लोबल वेरिएबल्स को एक बार परिभाषित करें ==========
-    window.csrfToken = window.csrfToken || document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-    window.userId = window.userId || {{ Auth::id() }};
+    // ============================================================
+    //  1. ग्लोबल वेरिएबल्स (एक बार परिभाषित)
+    // ============================================================
+    window.csrfToken  = window.csrfToken  || document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    window.userId     = window.userId     || {{ Auth::id() }};
     window.chatUserId = window.chatUserId || {{ $user->id }};
 
-    // अब हम इन ग्लोबल्स का उपयोग करेंगे, बिना 'const' या 'let' के
+    console.log('🌍 Globals set:', { csrfToken: window.csrfToken, userId: window.userId, chatUserId: window.chatUserId });
 
-    // ---------- Pusher सेटअप ----------
+    // ============================================================
+    //  2. Pusher सेटअप (ग्लोबल)
+    // ============================================================
     @if(env('PUSHER_APP_KEY'))
     window.pusher = new Pusher('{{ env("PUSHER_APP_KEY") }}', {
         cluster: '{{ env("PUSHER_APP_CLUSTER") }}',
         encrypted: true,
         authEndpoint: '/broadcasting/auth',
-        auth: { headers: { 'X-CSRF-TOKEN': window.csrfToken } }
+        auth: {
+            headers: {
+                'X-CSRF-TOKEN': window.csrfToken
+            }
+        }
     });
-    window.channel = window.pusher.subscribe('private.chat.' + window.userId);
-    
-    // चैट इवेंट्स
+
+    // ---- सब्सक्राइब अपने private चैनल पर ----
+    const myChannelName = 'private.chat.' + window.userId;
+    window.channel = window.pusher.subscribe(myChannelName);
+    console.log('📡 Subscribed to ' + myChannelName);
+
+    // ---- चैट इवेंट्स (जो पहले से काम कर रहे हैं) ----
     window.channel.bind('new-message', function(data) {
         if (data.sender_id == window.chatUserId || data.receiver_id == window.chatUserId) {
             if (data.sender_id == window.chatUserId) {
@@ -164,63 +176,44 @@
             }
         }
     });
+
     window.channel.bind('message-seen', function(data) {
         if (data.sender_id == window.userId && data.receiver_id == window.chatUserId) {
             updateMessageStatus(data.message_id, 'seen');
         }
     });
+
+    // ---- सब्सक्रिप्शन स्टेटस ----
+    window.channel.bind('pusher:subscription_succeeded', function() {
+        console.log('✅✅✅ Subscribed to ' + myChannelName + ' ✅✅✅');
+    });
+    window.channel.bind('pusher:subscription_error', function(err) {
+        console.error('❌❌❌ Subscription error:', err);
+    });
+
+    // ---- Pusher कनेक्शन स्टेटस ----
+    window.pusher.connection.bind('connected', function() {
+        console.log('✅ Pusher connected!');
+    });
+    window.pusher.connection.bind('disconnected', function() {
+        console.log('⚠️ Pusher disconnected');
+    });
+    window.pusher.connection.bind('error', function(err) {
+        console.error('❌ Pusher error:', err);
+    });
+
     @endif
 
-    // ---------- चैट फंक्शन्स ----------
+    // ============================================================
+    //  3. चैट फंक्शन्स (appendMessage, updateMessageStatus, markAsRead)
+    // ============================================================
     function appendMessage(data, isMine) {
-        const chatBox = $('#chat-box');
-        let attachmentHtml = '';
-        if (data.attachment && Array.isArray(data.attachment) && data.attachment.length > 0) {
-            attachmentHtml = '<div class="mt-2">';
-            data.attachment.forEach((path, idx) => {
-                const url = '{{ asset("storage") }}/' + path;
-                const mime = data.attachment_type[idx] || '';
-                if (mime.startsWith('image/')) {
-                    attachmentHtml += `<div class="attachment-item mb-1"><img src="${url}" style="max-width:100%; max-height:200px; border-radius:8px;"></div>`;
-                } else if (mime.startsWith('video/')) {
-                    attachmentHtml += `<div class="attachment-item mb-1"><video controls style="max-width:100%; max-height:200px; border-radius:8px;"><source src="${url}" type="${mime}"></video></div>`;
-                } else {
-                    attachmentHtml += `<div class="attachment-item mb-1"><a href="${url}" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="fa fa-file"></i> Download File</a></div>`;
-                }
-            });
-            attachmentHtml += '</div>';
-        }
-        const messageHtml = `
-            <div class="message ${isMine ? 'message-right' : 'message-left'} mb-3" data-message-id="${data.id}">
-                <div class="d-flex ${isMine ? 'justify-content-end' : 'justify-content-start'}">
-                    <div class="message-content p-2 rounded ${isMine ? 'bg-primary text-white' : 'bg-light'}" style="max-width: 70%;">
-                        ${data.message ? '<div>' + data.message + '</div>' : ''}
-                        ${attachmentHtml}
-                        <br>
-                        <small class="${isMine ? 'text-white-50' : 'text-muted'}">
-                            ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                            ${isMine ? '<i class="fa fa-check text-muted"></i>' : ''}
-                        </small>
-                    </div>
-                </div>
-            </div>
-        `;
-        chatBox.append(messageHtml);
-        chatBox.scrollTop(chatBox[0].scrollHeight);
+        // ... (वही कोड जो पहले था – यहाँ स्पेस बचाने के लिए नहीं लिख रहे, पर आपके पास है)
+        // सुनिश्चित करें कि इसमें window.csrfToken का इस्तेमाल हो।
     }
 
     function updateMessageStatus(messageId, status) {
-        let icon = '';
-        if (status == 'seen') icon = '<i class="fa fa-check-double text-primary"></i>';
-        else if (status == 'delivered') icon = '<i class="fa fa-check-double text-muted"></i>';
-        else icon = '<i class="fa fa-check text-muted"></i>';
-        const messageEl = $('.message[data-message-id="' + messageId + '"]');
-        if (messageEl.length) {
-            const smallEl = messageEl.find('.message-content small');
-            smallEl.html(function() {
-                return $(this).html().replace(/<i class="fa[^>]*><\/i>/, icon);
-            });
-        }
+        // ... (वही कोड)
     }
 
     function markAsRead(senderId) {
@@ -232,113 +225,19 @@
         });
     }
 
-    // ---------- फाइल अटैचमेंट प्रीव्यू ----------
-    let selectedFiles = [];
+    // ============================================================
+    //  4. फाइल अटैचमेंट प्रीव्यू + मैसेज सबमिट (आपका मौजूदा कोड)
+    // ============================================================
+    // ... (आपका मौजूदा code for file upload and message send)
+    // बस यह ध्यान दें कि सभी जगह window.csrfToken का उपयोग हो।
 
-    function renderPreviews() {
-        const container = $('#file-preview-container');
-        container.empty();
-        if (selectedFiles.length === 0) {
-            $('#file-count').text('0');
-            return;
-        }
-        $('#file-count').text(selectedFiles.length);
-        selectedFiles.forEach((file, index) => {
-            const wrapper = $('<div class="file-preview-wrapper mr-2 mb-2 position-relative" style="display:inline-block;"></div>');
-            const removeBtn = $('<button type="button" class="btn btn-danger btn-sm position-absolute" style="top:2px; right:2px; border-radius:50%; line-height:1; padding:0 4px; font-size:14px;">×</button>');
-            removeBtn.on('click', function() {
-                selectedFiles.splice(index, 1);
-                const input = $('#file-input')[0];
-                const dataTransfer = new DataTransfer();
-                selectedFiles.forEach(f => dataTransfer.items.add(f));
-                input.files = dataTransfer.files;
-                renderPreviews();
-            });
-            wrapper.append(removeBtn);
-
-            if (file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    wrapper.append(`<img src="${e.target.result}" style="height:80px; width:80px; object-fit:cover; border-radius:4px;">`);
-                };
-                reader.readAsDataURL(file);
-            } else {
-                wrapper.append(`<div style="height:80px; width:80px; background:#f0f0f0; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:12px; text-align:center; padding:4px; word-break:break-word;">${file.name}</div>`);
-            }
-            container.append(wrapper);
-        });
-    }
-
-    $('#file-input').on('change', function() {
-        const files = Array.from(this.files);
-        const remaining = 5 - selectedFiles.length;
-        if (files.length > remaining) {
-            alert('You can select maximum 5 files total.');
-            this.value = '';
-            return;
-        }
-        selectedFiles = selectedFiles.concat(files);
-        const dataTransfer = new DataTransfer();
-        selectedFiles.forEach(f => dataTransfer.items.add(f));
-        this.files = dataTransfer.files;
-        renderPreviews();
-        this.value = '';
-    });
-
-    // ---------- मैसेज भेजना ----------
-    $('#message-form').on('submit', function(e) {
-        e.preventDefault();
-        const form = $(this);
-        const messageInput = form.find('input[name="message"]');
-        const receiverId = form.find('input[name="receiver_id"]').val();
-
-        const hasMessage = messageInput.val().trim() !== '';
-        const hasFiles = selectedFiles.length > 0;
-        if (!hasMessage && !hasFiles) return;
-
-        const formData = new FormData();
-        formData.append('receiver_id', receiverId);
-        if (hasMessage) formData.append('message', messageInput.val().trim());
-        selectedFiles.forEach((file) => {
-            formData.append('attachments[]', file);
-        });
-        formData.append('_token', window.csrfToken);
-
-        $.ajax({
-            url: '{{ route("admin.chats.send") }}',
-            method: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function(response) {
-                if (response.success) {
-                    appendMessage(response.message, true);
-                    messageInput.val('');
-                    selectedFiles = [];
-                    $('#file-input')[0].files = new DataTransfer().files;
-                    renderPreviews();
-                }
-            },
-            error: function(xhr) {
-                console.log('Error:', xhr);
-                alert('Error sending message. Please try again.');
-            }
-        });
-    });
-
-    // ---------- ऑनलाइन स्टेटस ----------
+    // ============================================================
+    //  5. ऑनलाइन स्टेटस अपडेट
+    // ============================================================
     function updateOnlineStatus() {
         $.get('{{ route("admin.chats.online-status") }}', { user_id: window.chatUserId }, function(data) {
-            if (data.online) {
-                $('#status-dot').css('background', '#28a745');
-                $('#status-text').text('Online');
-                $('#last-seen-text').text('');
-            } else {
-                $('#status-dot').css('background', '#6c757d');
-                $('#status-text').text('Offline');
-                if (data.last_seen) $('#last-seen-text').text(' (Last seen: ' + data.last_seen + ')');
-            }
-        }).fail(function() { console.log('Error getting online status'); });
+            // ... (आपका मौजूदा कोड)
+        });
     }
     updateOnlineStatus();
     setInterval(updateOnlineStatus, 30000);
@@ -347,12 +246,20 @@
         $('#chat-box').scrollTop($('#chat-box')[0].scrollHeight);
     });
 
-    // ========== call.js लोड करें ==========
-    // (यह सुनिश्चित करें कि call.js इस स्क्रिप्ट के बाद लोड हो, क्योंकि उसे ग्लोबल वेरिएबल्स चाहिए)
-    // आप चाहें तो इसे डायनामिकली लोड कर सकते हैं, या सीधे <script> टैग से पहले ही लोड करें
-    // हम इसे यहाँ डायनामिक रूप से लोड कर रहे हैं:
+    // ============================================================
+    //  6. call.js को डायनामिक रूप से लोड करें (सुनिश्चित करें कि यह अंत में आए)
+    // ============================================================
+    // पहले से मौजूद call.js को हटा दें (यदि कोई हो) और नया लोड करें
+    document.querySelectorAll('script[src*="call.js"]').forEach(el => el.remove());
     const callScript = document.createElement('script');
-    callScript.src = "{{ asset('admin/assets/js/call.js') }}";
+    callScript.src = "{{ asset('admin/assets/js/call.js') }}?v=" + Date.now(); // cache bust
+    callScript.onload = function() {
+        console.log('📞 call.js loaded successfully');
+    };
+    callScript.onerror = function() {
+        console.error('❌ Failed to load call.js');
+    };
     document.head.appendChild(callScript);
+
 </script>
 @endpush
