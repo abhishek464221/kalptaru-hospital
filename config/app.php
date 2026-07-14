@@ -171,7 +171,7 @@ return [
          */
         App\Providers\AppServiceProvider::class,
         App\Providers\AuthServiceProvider::class,
-        // App\Providers\BroadcastServiceProvider::class, // Already added above
+        App\Providers\BroadcastServiceProvider::class, // Already added above
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
 
