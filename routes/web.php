@@ -42,7 +42,7 @@ use App\Http\Controllers\Frontend\ContactController;
 
 use Illuminate\Support\Facades\Broadcast;
 
-Broadcast::routes();
+Broadcast::routes(['middleware' => ['web', 'auth']]);
 
 
 
