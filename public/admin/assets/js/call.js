@@ -4,6 +4,18 @@
 
 console.log('📞 call.js loaded - EVENTS FIXED');
 
+// ---------- सुनिश्चित करें कि ग्लोबल वेरिएबल्स मौजूद हैं ----------
+if (typeof window.csrfToken === 'undefined') {
+    window.csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+}
+if (typeof window.userId === 'undefined') {
+    window.userId = 0; // fallback
+}
+if (typeof window.chatUserId === 'undefined') {
+    window.chatUserId = 0; // fallback
+}
+// पुशर और चैनल को हम call.js में ही सेट करेंगे (अगर पहले से नहीं है)
+
 // ---------- VARIABLES ----------
 let localStream = null;
 let remoteStream = null;
@@ -118,7 +130,7 @@ function createPeerConnection(targetId, isCaller = true) {
                 data: {
                     target_id: targetId,
                     candidate: JSON.stringify(event.candidate),
-                    _token: csrfToken
+                    _token: window.csrfToken
                 }
             });
         } else {
@@ -230,7 +242,7 @@ async function startCall(receiverId, callType = 'video') {
                 receiver_id: receiverId,
                 offer: JSON.stringify(offer),
                 call_type: callType,
-                _token: csrfToken
+                _token: window.csrfToken
             },
             success: function () {
                 console.log('✅ Offer sent successfully');
@@ -304,7 +316,7 @@ async function answerCall(callerId, offerSdp) {
             data: {
                 caller_id: callerId,
                 answer: JSON.stringify(answer),
-                _token: csrfToken
+                _token: window.csrfToken
             },
             success: function () {
                 console.log('✅ Answer sent successfully');
@@ -372,7 +384,7 @@ function endCall(receiverId) {
         data: {
             receiver_id: receiverId,
             duration_seconds: duration,
-            _token: csrfToken
+            _token: window.csrfToken
         },
         success: function () { console.log('✅ Call logged successfully'); },
         error: function (xhr) { console.error('❌ Failed to log call:', xhr); }
@@ -464,7 +476,7 @@ function showIncomingModal(callerId, callType, offerData) {
                 data: {
                     receiver_id: storedCallerId,
                     duration_seconds: 0,
-                    _token: csrfToken
+                    _token: window.csrfToken
                 },
                 success: function () { console.log('✅ Rejection logged'); }
             });
@@ -478,13 +490,15 @@ function showIncomingModal(callerId, callType, offerData) {
 function bindCallEvents() {
     console.log('🔍 bindCallEvents called...');
 
-    if (typeof channel === 'undefined') {
+    if (typeof window.channel === 'undefined' || !window.channel) {
         console.warn('⚠️ Pusher channel not defined. Retrying in 1s...');
         setTimeout(bindCallEvents, 1000);
         return;
     }
 
-    console.log('✅ Pusher channel found:', channel);
+    console.log('✅ Pusher channel found:', window.channel);
+    const channel = window.channel;
+    const userId = window.userId;
 
     // ---- Call Offer ----
     channel.bind('call-offer', function (data) {
@@ -500,10 +514,9 @@ function bindCallEvents() {
         showIncomingModal(data.caller_id, data.call_type, data.offer);
     });
 
-    // ---- Call Answer (FIXED: check caller_id) ----
+    // ---- Call Answer ----
     channel.bind('call-answer', function (data) {
         console.log('📨📨📨 CALL ANSWER RECEIVED!', data);
-        // The answer is meant for the caller, so check if data.caller_id matches me
         if (data.caller_id != userId) {
             console.log(`⏭️ Ignoring answer - not for me (caller: ${data.caller_id}, me: ${userId})`);
             return;
@@ -536,7 +549,6 @@ function bindCallEvents() {
         try {
             const candidate = JSON.parse(data.candidate);
             if (peerConnection && isCallActive) {
-                // Check if remote description is set before adding
                 if (peerConnection.remoteDescription) {
                     peerConnection.addIceCandidate(new RTCIceCandidate(candidate))
                         .then(() => console.log('✅ ICE candidate added'))
@@ -557,7 +569,6 @@ function bindCallEvents() {
     // ---- Call End ----
     channel.bind('call-end', function (data) {
         console.log('📨📨📨 CALL END RECEIVED!', data);
-        // The end event is sent to the receiver, so check if receiver_id matches me
         if (data.receiver_id != userId) {
             console.log(`⏭️ Ignoring end - not for me (receiver: ${data.receiver_id}, me: ${userId})`);
             return;
@@ -584,44 +595,44 @@ function bindCallEvents() {
 // ---------- UI BUTTON BINDINGS ----------
 $(document).on('click', '#audio-call-btn', function () {
     console.log('🔊 Audio call button clicked');
-    if (typeof chatUserId === 'undefined') {
+    if (typeof window.chatUserId === 'undefined' || !window.chatUserId) {
         alert('User ID not found. Please refresh.');
         return;
     }
-    startCall(chatUserId, 'audio');
+    startCall(window.chatUserId, 'audio');
 });
 
 $(document).on('click', '#video-call-btn', function () {
     console.log('📹 Video call button clicked');
-    if (typeof chatUserId === 'undefined') {
+    if (typeof window.chatUserId === 'undefined' || !window.chatUserId) {
         alert('User ID not found. Please refresh.');
         return;
     }
-    startCall(chatUserId, 'video');
+    startCall(window.chatUserId, 'video');
 });
 
 $(document).on('click', '#end-call-btn', function () {
     console.log('🔴 End call button clicked');
-    if (typeof chatUserId === 'undefined') {
+    if (typeof window.chatUserId === 'undefined' || !window.chatUserId) {
         alert('User ID not found.');
         return;
     }
     stopRingtone();
-    endCall(chatUserId);
+    endCall(window.chatUserId);
 });
 
 // ---------- INITIALIZE ----------
 $(document).ready(function () {
     console.log('🚀 call.js initialized - EVENTS FIXED');
 
-    if (typeof pusher !== 'undefined') {
-        pusher.connection.bind('connected', function () {
+    if (typeof window.pusher !== 'undefined') {
+        window.pusher.connection.bind('connected', function () {
             console.log('✅ Pusher connected!');
         });
-        pusher.connection.bind('disconnected', function () {
+        window.pusher.connection.bind('disconnected', function () {
             console.log('⚠️ Pusher disconnected');
         });
-        pusher.connection.bind('error', function (err) {
+        window.pusher.connection.bind('error', function (err) {
             console.error('❌ Pusher error:', err);
         });
     }

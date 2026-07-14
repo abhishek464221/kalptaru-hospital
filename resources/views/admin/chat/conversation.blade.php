@@ -136,37 +136,42 @@
 @push('scripts')
 <script src="https://js.pusher.com/7.0/pusher.min.js"></script>
 <script>
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    // ========== ग्लोबल वेरिएबल्स को एक बार परिभाषित करें ==========
+    window.csrfToken = window.csrfToken || document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    window.userId = window.userId || {{ Auth::id() }};
+    window.chatUserId = window.chatUserId || {{ $user->id }};
 
-    // ---------- Pusher ----------
+    // अब हम इन ग्लोबल्स का उपयोग करेंगे, बिना 'const' या 'let' के
+
+    // ---------- Pusher सेटअप ----------
     @if(env('PUSHER_APP_KEY'))
-    const pusher = new Pusher('{{ env("PUSHER_APP_KEY") }}', {
+    window.pusher = new Pusher('{{ env("PUSHER_APP_KEY") }}', {
         cluster: '{{ env("PUSHER_APP_CLUSTER") }}',
         encrypted: true,
         authEndpoint: '/broadcasting/auth',
-        auth: { headers: { 'X-CSRF-TOKEN': csrfToken } }
+        auth: { headers: { 'X-CSRF-TOKEN': window.csrfToken } }
     });
-    const userId = {{ Auth::id() }};
-    const chatUserId = {{ $user->id }};
-    const channel = pusher.subscribe('private.chat.' + userId);
-    channel.bind('new-message', function(data) {
-        if (data.sender_id == chatUserId || data.receiver_id == chatUserId) {
-            if (data.sender_id == chatUserId) {
+    window.channel = window.pusher.subscribe('private.chat.' + window.userId);
+    
+    // चैट इवेंट्स
+    window.channel.bind('new-message', function(data) {
+        if (data.sender_id == window.chatUserId || data.receiver_id == window.chatUserId) {
+            if (data.sender_id == window.chatUserId) {
                 appendMessage(data, false);
                 markAsRead(data.sender_id);
-            } else if (data.receiver_id == chatUserId) {
+            } else if (data.receiver_id == window.chatUserId) {
                 updateMessageStatus(data.id, 'delivered');
             }
         }
     });
-    channel.bind('message-seen', function(data) {
-        if (data.sender_id == userId && data.receiver_id == chatUserId) {
+    window.channel.bind('message-seen', function(data) {
+        if (data.sender_id == window.userId && data.receiver_id == window.chatUserId) {
             updateMessageStatus(data.message_id, 'seen');
         }
     });
     @endif
 
-    // ---------- Chat Functions ----------
+    // ---------- चैट फंक्शन्स ----------
     function appendMessage(data, isMine) {
         const chatBox = $('#chat-box');
         let attachmentHtml = '';
@@ -222,12 +227,12 @@
         $.ajax({
             url: '{{ route("admin.chats.mark-read") }}',
             method: 'POST',
-            data: { user_id: senderId, _token: csrfToken },
+            data: { user_id: senderId, _token: window.csrfToken },
             error: function(xhr) { console.log('Error marking read:', xhr); }
         });
     }
 
-    // ---------- Multiple file preview ----------
+    // ---------- फाइल अटैचमेंट प्रीव्यू ----------
     let selectedFiles = [];
 
     function renderPreviews() {
@@ -280,6 +285,7 @@
         this.value = '';
     });
 
+    // ---------- मैसेज भेजना ----------
     $('#message-form').on('submit', function(e) {
         e.preventDefault();
         const form = $(this);
@@ -296,7 +302,7 @@
         selectedFiles.forEach((file) => {
             formData.append('attachments[]', file);
         });
-        formData.append('_token', csrfToken);
+        formData.append('_token', window.csrfToken);
 
         $.ajax({
             url: '{{ route("admin.chats.send") }}',
@@ -320,9 +326,9 @@
         });
     });
 
-    // ---------- Online status ----------
+    // ---------- ऑनलाइन स्टेटस ----------
     function updateOnlineStatus() {
-        $.get('{{ route("admin.chats.online-status") }}', { user_id: chatUserId }, function(data) {
+        $.get('{{ route("admin.chats.online-status") }}', { user_id: window.chatUserId }, function(data) {
             if (data.online) {
                 $('#status-dot').css('background', '#28a745');
                 $('#status-text').text('Online');
@@ -341,11 +347,12 @@
         $('#chat-box').scrollTop($('#chat-box')[0].scrollHeight);
     });
 
-    // ---------- Load Call Logic from external file ----------
-    // Path: public/admin/assets/js/call.js
+    // ========== call.js लोड करें ==========
+    // (यह सुनिश्चित करें कि call.js इस स्क्रिप्ट के बाद लोड हो, क्योंकि उसे ग्लोबल वेरिएबल्स चाहिए)
+    // आप चाहें तो इसे डायनामिकली लोड कर सकते हैं, या सीधे <script> टैग से पहले ही लोड करें
+    // हम इसे यहाँ डायनामिक रूप से लोड कर रहे हैं:
     const callScript = document.createElement('script');
     callScript.src = "{{ asset('admin/assets/js/call.js') }}";
     document.head.appendChild(callScript);
-
 </script>
 @endpush
