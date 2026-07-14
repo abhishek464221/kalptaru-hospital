@@ -1,26 +1,16 @@
 // ============================================================
-//                      CALL.JS (FULLY DEBUGGED)
+//                      CALL.JS (EVENTS FIXED)
 // ============================================================
 
-console.log('📞 call.js loaded – ENHANCED');
-
-// ---------- सुनिश्चित करें कि ग्लोबल वेरिएबल्स मौजूद हैं ----------
+console.log('📞 call.js loaded - EVENTS FIXED');
 if (typeof window.csrfToken === 'undefined') {
     window.csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-    console.warn('⚠️ csrfToken was missing, set from meta');
 }
 if (typeof window.userId === 'undefined') {
-    window.userId = 0;
-    console.warn('⚠️ userId was missing, set to 0');
+    window.userId = 0; // fallback
 }
 if (typeof window.chatUserId === 'undefined') {
-    window.chatUserId = 0;
-    console.warn('⚠️ chatUserId was missing, set to 0');
-}
-if (typeof window.pusher === 'undefined') {
-    console.error('❌ Pusher not defined! Call features will not work.');
-} else {
-    console.log('✅ Pusher found, userId:', window.userId, 'chatUserId:', window.chatUserId);
+    window.chatUserId = 0; // fallback
 }
 
 // ---------- VARIABLES ----------
@@ -158,6 +148,7 @@ function createPeerConnection(targetId, isCaller = true) {
         }
     };
 
+    // Add pending ICE candidates only if remote description is set
     if (pendingIceCandidates.length > 0 && pc.remoteDescription) {
         console.log(`📦 Adding ${pendingIceCandidates.length} pending ICE candidates`);
         pendingIceCandidates.forEach(candidate => {
@@ -239,7 +230,7 @@ async function startCall(receiverId, callType = 'video') {
         peerConnection = createPeerConnection(receiverId, true);
         const offer = await peerConnection.createOffer();
         await peerConnection.setLocalDescription(offer);
-        console.log('📤 Sending offer to server');
+        console.log('📤 Sending offer');
 
         $.ajax({
             url: '/admin/calls/offer',
@@ -250,8 +241,8 @@ async function startCall(receiverId, callType = 'video') {
                 call_type: callType,
                 _token: window.csrfToken
             },
-            success: function (response) {
-                console.log('✅ Offer sent successfully, server response:', response);
+            success: function () {
+                console.log('✅ Offer sent successfully');
             },
             error: function (xhr) {
                 console.error('❌ Failed to send offer:', xhr);
@@ -301,8 +292,9 @@ async function answerCall(callerId, offerSdp) {
         await peerConnection.setRemoteDescription(offer);
         console.log('📥 Remote description set');
 
+        // After remote description is set, add any pending ICE candidates
         if (pendingIceCandidates.length > 0) {
-            console.log(`📦 Adding ${pendingIceCandidates.length} pending ICE candidates`);
+            console.log(`📦 Adding ${pendingIceCandidates.length} pending ICE candidates after remote description`);
             pendingIceCandidates.forEach(candidate => {
                 peerConnection.addIceCandidate(new RTCIceCandidate(candidate))
                     .then(() => console.log('✅ Pending ICE added'))
@@ -410,10 +402,10 @@ function updateCallDuration() {
 }
 
 // ============================================================
-//   SHOW INCOMING CALL MODAL (with extra debug)
+//   SHOW INCOMING CALL MODAL
 // ============================================================
 function showIncomingModal(callerId, callType, offerData) {
-    console.log('📞📞📞 showIncomingModal called with:', { callerId, callType });
+    console.log('📞 showIncomingModal called with:', { callerId, callType });
     $('#incoming-call-modal').remove();
 
     const modalHtml = `
@@ -443,6 +435,7 @@ function showIncomingModal(callerId, callType, offerData) {
 
     playRingtone();
 
+    // Accept button
     $('#accept-call-btn').on('click', function () {
         console.log('✅ Accept button clicked');
         stopRingtone();
@@ -466,6 +459,7 @@ function showIncomingModal(callerId, callType, offerData) {
         }
     });
 
+    // Reject button
     $('#reject-call-btn').on('click', function () {
         console.log('❌ Reject button clicked');
         const storedCallerId = modal.data('callerId');
@@ -488,40 +482,20 @@ function showIncomingModal(callerId, callType, offerData) {
 }
 
 // ============================================================
-//   PUSHER EVENT BINDINGS (SELF-HEALING + LOGGING)
+//   PUSHER EVENT BINDINGS (FIXED CONDITIONS)
 // ============================================================
 function bindCallEvents() {
     console.log('🔍 bindCallEvents called...');
 
-    // ---- अगर channel नहीं है, तो खुद subscribe करें ----
     if (typeof window.channel === 'undefined' || !window.channel) {
-        console.warn('⚠️ window.channel not defined. Trying to subscribe manually...');
-        if (window.pusher) {
-            const channelName = 'private.chat.' + window.userId;
-            console.log(`🔄 Subscribing to ${channelName} manually...`);
-            window.channel = window.pusher.subscribe(channelName);
-            window.channel.bind('pusher:subscription_succeeded', function () {
-                console.log(`✅✅✅ Manually subscribed to ${channelName}`);
-                attachAllEvents(window.channel, window.userId);
-            });
-            window.channel.bind('pusher:subscription_error', function (err) {
-                console.error(`❌❌❌ Manual subscription error:`, err);
-                setTimeout(bindCallEvents, 2000);
-            });
-        } else {
-            console.error('❌ No Pusher instance!');
-            setTimeout(bindCallEvents, 1000);
-        }
+        console.warn('⚠️ Pusher channel not defined. Retrying in 1s...');
+        setTimeout(bindCallEvents, 1000);
         return;
     }
 
-    // ---- channel मौजूद है ----
-    console.log('✅ window.channel found:', window.channel);
-    attachAllEvents(window.channel, window.userId);
-}
-
-function attachAllEvents(channel, userId) {
-    console.log('🔗 Attaching all call events to channel:', channel);
+    console.log('✅ Pusher channel found:', window.channel);
+    const channel = window.channel;
+    const userId = window.userId;
 
     // ---- Call Offer ----
     channel.bind('call-offer', function (data) {
@@ -603,21 +577,22 @@ function attachAllEvents(channel, userId) {
         }
     });
 
-    // ---- Subscription Success/Error ----
+    // ---- Subscription Success ----
     channel.bind('pusher:subscription_succeeded', function () {
         console.log('✅✅✅ Subscribed to private.chat.' + userId + ' ✅✅✅');
     });
+
     channel.bind('pusher:subscription_error', function (err) {
         console.error('❌❌❌ Subscription error:', err);
     });
 
-    console.log('✅ All call events attached!');
+    console.log('✅ All call events bound!');
 }
 
 // ---------- UI BUTTON BINDINGS ----------
 $(document).on('click', '#audio-call-btn', function () {
     console.log('🔊 Audio call button clicked');
-    if (!window.chatUserId) {
+    if (typeof window.chatUserId === 'undefined' || !window.chatUserId) {
         alert('User ID not found. Please refresh.');
         return;
     }
@@ -626,7 +601,7 @@ $(document).on('click', '#audio-call-btn', function () {
 
 $(document).on('click', '#video-call-btn', function () {
     console.log('📹 Video call button clicked');
-    if (!window.chatUserId) {
+    if (typeof window.chatUserId === 'undefined' || !window.chatUserId) {
         alert('User ID not found. Please refresh.');
         return;
     }
@@ -635,7 +610,7 @@ $(document).on('click', '#video-call-btn', function () {
 
 $(document).on('click', '#end-call-btn', function () {
     console.log('🔴 End call button clicked');
-    if (!window.chatUserId) {
+    if (typeof window.chatUserId === 'undefined' || !window.chatUserId) {
         alert('User ID not found.');
         return;
     }
@@ -645,41 +620,20 @@ $(document).on('click', '#end-call-btn', function () {
 
 // ---------- INITIALIZE ----------
 $(document).ready(function () {
-    console.log('🚀 call.js initializing...');
+    console.log('🚀 call.js initialized - EVENTS FIXED');
 
-    // पहले से connected हो तो तुरंत bind करें
-    if (window.pusher && window.pusher.connection.state === 'connected') {
-        bindCallEvents();
-    } else {
-        // नहीं तो connection event पर bind करें
-        if (window.pusher) {
-            window.pusher.connection.bind('connected', function () {
-                console.log('✅ Pusher connected (from call.js) – binding events');
-                bindCallEvents();
-            });
-        }
+    if (typeof window.pusher !== 'undefined') {
+        window.pusher.connection.bind('connected', function () {
+            console.log('✅ Pusher connected!');
+        });
+        window.pusher.connection.bind('disconnected', function () {
+            console.log('⚠️ Pusher disconnected');
+        });
+        window.pusher.connection.bind('error', function (err) {
+            console.error('❌ Pusher error:', err);
+        });
     }
 
-    // सुरक्षा के लिए 2 सेकंड बाद भी एक बार try करें
-    setTimeout(bindCallEvents, 2000);
-
+    setTimeout(bindCallEvents, 500);
     $('#end-call-btn').hide();
-
-    // ---- डीबग: कंसोल में मैन्युअल ट्रिगर (टेस्ट के लिए) ----
-    window.testCallOffer = function (receiverId) {
-        // सिम्युलेट करें (केवल डीबग)
-        console.warn('⚠️ Manual test: triggering fake call-offer');
-        const fakeData = {
-            receiver_id: receiverId || window.userId,
-            caller_id: 999,
-            call_type: 'video',
-            offer: '{"sdp":"fake","type":"offer"}'
-        };
-        // सीधे handler को कॉल करें
-        if (window.channel) {
-            window.channel.emit('call-offer', fakeData);
-        } else {
-            alert('Channel not ready');
-        }
-    };
 });

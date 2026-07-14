@@ -40,10 +40,6 @@ use App\Http\Controllers\Frontend\GalleryController as FrontendGalleryController
 use App\Http\Controllers\Frontend\BlogController as FrontendBlogController;
 use App\Http\Controllers\Frontend\ContactController;
 
-use Illuminate\Support\Facades\Broadcast;
-
-Broadcast::routes(['middleware' => ['web', 'auth']]);
-
 
 
 // ---- Appointment Booking ----
