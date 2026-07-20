@@ -42,6 +42,10 @@
                 </div>
             </form>
         </div>
+        <div>
+            <span><strong>Email : </strong>admin@admin.com</span>
+            <span><strong>Password : </strong>password</span>
+        </div>
     </div>
 </div>
 @endsection
