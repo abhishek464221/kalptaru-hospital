@@ -170,59 +170,6 @@
                             </div>
                         </div>
                         @endif
-
-                        <!-- Comments Section (Static for now, but you can integrate a comment system later) -->
-                        <div id="comments" class="comments-area">
-                            <div class="list-comments">
-                                <h3 class="comments-title">0 Comments</h3>
-                                <div class="uni-divider"></div>
-                                <!-- Comment list will be dynamic if you add comments table -->
-                            </div>
-
-                            <div class="form-comment">
-                                <div id="respond" class="comment-respond">
-                                    <h3 id="reply-title" class="comment-reply-title">Leave a Comment</h3>
-                                    <div class="uni-divider"></div>
-                                    <div class="row">
-                                        <div class="uni-message-cause-form">
-                                            <form action="#" method="post">
-                                                @csrf
-                                                <div class="form-group">
-                                                    <div class="col-md-12">
-                                                        <textarea class="form-control" id="yourmessage" name="message" placeholder="Your Comments" rows="5"></textarea>
-                                                    </div>
-                                                    <div class="clearfix"></div>
-                                                </div>
-                                                <div class="form-group">
-                                                    <div class="col-md-4">
-                                                        <input type="text" id="yourName" placeholder="Name *" class="form-control" required>
-                                                    </div>
-                                                </div>
-                                                <div class="form-group">
-                                                    <div class="col-md-4">
-                                                        <input type="email" id="youremail" placeholder="Email *" class="form-control" required>
-                                                    </div>
-                                                </div>
-                                                <div class="form-group">
-                                                    <div class="col-md-4">
-                                                        <input type="url" id="website" placeholder="Website" class="form-control">
-                                                    </div>
-                                                </div>
-
-                                                <div class="form-group">
-                                                    <div class="col-md-12">
-                                                        <div class="vk-btn-send">
-                                                            <button type="submit" class="btn vk-btn-primary">Post Comment</button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
                     </div>
                 </div>
             </div>

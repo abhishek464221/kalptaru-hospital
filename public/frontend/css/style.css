@@ -4923,13 +4923,13 @@ a:hover {
 
 .uni-pagination-blog ul li a {
   display: inline-block;
-  min-width: 160px;
+  min-width: 30px;
   font-family: 'Poppins';
   font-size: 14px;
   font-weight: 600;
   font-style: normal;
   font-stretch: normal;
-  line-height: 3.64;
+  line-height: 1.64;
   letter-spacing: normal;
   text-align: center;
   text-transform: uppercase;
