@@ -26,7 +26,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Paginator::useBootstrap();
-        URL::forceScheme('http');
+        URL::forceScheme('https');
         View::composer('*', function ($view) {
             $settings = Setting::pluck('value', 'key')->toArray();
             $view->with('settings', $settings);
