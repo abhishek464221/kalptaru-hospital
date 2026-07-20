@@ -8,9 +8,6 @@ use Illuminate\Http\Request;
 
 class SettingController extends Controller
 {
-    /**
-     * Display company settings form.
-     */
     public function index()
     {
         $settings = Setting::getMany([
@@ -26,9 +23,9 @@ class SettingController extends Controller
             'mobile',
             'fax',
             'website',
-            'logo_header',      // ✅ 
-            'logo_footer',      // ✅
-            'facebook_url',     // ✅ _url
+            'logo_header',       
+            'logo_footer',      
+            'facebook_url',      
             'twitter_url',
             'instagram_url',
             'linkedin_url',
@@ -37,9 +34,6 @@ class SettingController extends Controller
         return view('admin.setting.index', compact('settings'));
     }
 
-    /**
-     * Update company settings.
-     */
     public function update(Request $request)
     {
         $request->validate([

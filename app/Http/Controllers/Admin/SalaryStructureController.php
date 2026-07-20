@@ -4,18 +4,33 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\SalaryStructure;
+use App\Models\Doctor;
 use App\Models\Employee;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class SalaryStructureController extends Controller
 {
     /**
      * Display a listing of salary structures.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $salaryStructures = SalaryStructure::with('employee')->get();
-        return view('admin.salary-structure.index', compact('salaryStructures'));
+        $structures = SalaryStructure::with(['employee'])
+            ->when($request->search, function($q) use ($request) {
+                $q->whereHas('employee', function($q2) use ($request) {
+                    $q2->where('first_name', 'LIKE', "%{$request->search}%")
+                       ->orWhere('last_name', 'LIKE', "%{$request->search}%");
+                });
+            })
+            ->when($request->type, function($q) use ($request) {
+                $q->where('employee_type', $request->type);
+            })
+            ->orderBy('created_at', 'desc')
+            ->paginate(15);
+
+        return view('admin.salary-structure.index', compact('structures'));
     }
 
     /**
@@ -23,8 +38,17 @@ class SalaryStructureController extends Controller
      */
     public function create()
     {
-        $employees = Employee::all();
-        return view('admin.salary-structure.create', compact('employees'));
+        // Get all employee types with their records
+        $doctors = Doctor::select('id', 'first_name', 'last_name', 'specialization')->get();
+        $employees = Employee::select('id', 'first_name', 'last_name')->get();
+        // If you have Users, you can add them too
+
+        $employeeTypes = [
+            'doctor' => $doctors,
+            'employee' => $employees,
+        ];
+
+        return view('admin.salary-structure.create', compact('employeeTypes'));
     }
 
     /**
@@ -33,23 +57,49 @@ class SalaryStructureController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'employee_id' => 'required|exists:employees,id',
-            'basic' => 'nullable|numeric|min:0',
-            'house_rent_allowance' => 'nullable|numeric|min:0',
-            'conveyance_allowance' => 'nullable|numeric|min:0',
-            'medical_allowance' => 'nullable|numeric|min:0',
-            'other_allowances' => 'nullable|numeric|min:0',
-            'provident_fund' => 'nullable|numeric|min:0',
-            'tax_deduction' => 'nullable|numeric|min:0',
-            'other_deductions' => 'nullable|numeric|min:0',
+            'employee_type' => 'required|in:doctor,employee',
+            'employee_id' => 'required|integer',
+            'base_salary' => 'required|numeric|min:0',
+            'payment_frequency' => 'required|in:monthly,weekly,hourly',
+            'allowances' => 'nullable|array',
+            'allowances.*' => 'numeric|min:0',
+            'deductions' => 'nullable|array',
+            'deductions.*' => 'numeric|min:0',
+            'variable_components' => 'nullable|array',
+            'variable_components.*' => 'numeric|min:0',
             'effective_from' => 'required|date',
             'effective_to' => 'nullable|date|after:effective_from',
+            'is_active' => 'sometimes|boolean',
         ]);
 
-        SalaryStructure::create($request->all());
+        // Convert employee_type to full class name for polymorphic
+        $typeMap = [
+            'doctor' => Doctor::class,
+            'employee' => Employee::class,
+        ];
+
+        $data = $request->all();
+        $data['employee_type'] = $typeMap[$request->employee_type];
+        $data['is_active'] = $request->has('is_active') ? 1 : 0;
+
+        // Clean empty JSON fields
+        $data['allowances'] = $request->allowances ?: [];
+        $data['deductions'] = $request->deductions ?: [];
+        $data['variable_components'] = $request->variable_components ?: [];
+
+        SalaryStructure::create($data);
 
         return redirect()->route('admin.salary-structures.index')
-            ->with('success', 'Salary structure created successfully.');
+            ->with('success', 'Salary Structure created successfully.');
+    }
+
+    /**
+     * Display the specified salary structure.
+     */
+    public function show(SalaryStructure $salaryStructure)
+    {
+        $salaryStructure->load('employee');
+        return view('admin.salary-structure.show', compact('salaryStructure'));
     }
 
     /**
@@ -57,8 +107,19 @@ class SalaryStructureController extends Controller
      */
     public function edit(SalaryStructure $salaryStructure)
     {
-        $employees = Employee::all();
-        return view('admin.salary-structure.edit', compact('salaryStructure', 'employees'));
+        $doctors = Doctor::select('id', 'first_name', 'last_name', 'specialization')->get();
+        $employees = Employee::select('id', 'first_name', 'last_name')->get();
+
+        $employeeTypes = [
+            'doctor' => $doctors,
+            'employee' => $employees,
+        ];
+
+        // Determine current employee type for dropdown selection
+        $currentType = class_basename($salaryStructure->employee_type);
+        $currentTypeLower = strtolower($currentType);
+
+        return view('admin.salary-structure.edit', compact('salaryStructure', 'employeeTypes', 'currentTypeLower'));
     }
 
     /**
@@ -67,23 +128,37 @@ class SalaryStructureController extends Controller
     public function update(Request $request, SalaryStructure $salaryStructure)
     {
         $request->validate([
-            'employee_id' => 'required|exists:employees,id',
-            'basic' => 'nullable|numeric|min:0',
-            'house_rent_allowance' => 'nullable|numeric|min:0',
-            'conveyance_allowance' => 'nullable|numeric|min:0',
-            'medical_allowance' => 'nullable|numeric|min:0',
-            'other_allowances' => 'nullable|numeric|min:0',
-            'provident_fund' => 'nullable|numeric|min:0',
-            'tax_deduction' => 'nullable|numeric|min:0',
-            'other_deductions' => 'nullable|numeric|min:0',
+            'employee_type' => 'required|in:doctor,employee',
+            'employee_id' => 'required|integer',
+            'base_salary' => 'required|numeric|min:0',
+            'payment_frequency' => 'required|in:monthly,weekly,hourly',
+            'allowances' => 'nullable|array',
+            'allowances.*' => 'numeric|min:0',
+            'deductions' => 'nullable|array',
+            'deductions.*' => 'numeric|min:0',
+            'variable_components' => 'nullable|array',
+            'variable_components.*' => 'numeric|min:0',
             'effective_from' => 'required|date',
             'effective_to' => 'nullable|date|after:effective_from',
+            'is_active' => 'sometimes|boolean',
         ]);
 
-        $salaryStructure->update($request->all());
+        $typeMap = [
+            'doctor' => Doctor::class,
+            'employee' => Employee::class,
+        ];
+
+        $data = $request->all();
+        $data['employee_type'] = $typeMap[$request->employee_type];
+        $data['is_active'] = $request->has('is_active') ? 1 : 0;
+        $data['allowances'] = $request->allowances ?: [];
+        $data['deductions'] = $request->deductions ?: [];
+        $data['variable_components'] = $request->variable_components ?: [];
+
+        $salaryStructure->update($data);
 
         return redirect()->route('admin.salary-structures.index')
-            ->with('success', 'Salary structure updated successfully.');
+            ->with('success', 'Salary Structure updated successfully.');
     }
 
     /**
@@ -91,8 +166,49 @@ class SalaryStructureController extends Controller
      */
     public function destroy(SalaryStructure $salaryStructure)
     {
+        // Check if any payroll exists for this structure
+        if ($salaryStructure->payrolls()->count() > 0) {
+            return redirect()->route('admin.salary-structures.index')
+                ->with('error', 'Cannot delete: This structure has associated payrolls.');
+        }
+
         $salaryStructure->delete();
         return redirect()->route('admin.salary-structures.index')
-            ->with('success', 'Salary structure deleted successfully.');
+            ->with('success', 'Salary Structure deleted successfully.');
+    }
+
+    /**
+     * AJAX: Get employees by type for dropdown
+     */
+    public function getEmployees(Request $request)
+    {
+        $type = $request->type;
+        $selected = $request->selected ?? null;
+
+        if ($type == 'doctor') {
+            $employees = Doctor::select('id', 'first_name', 'last_name')
+                ->orderBy('first_name')
+                ->get()
+                ->map(function($item) {
+                    return [
+                        'id' => $item->id,
+                        'name' => $item->full_name,
+                    ];
+                });
+        } else if ($type == 'employee') {
+            $employees = Employee::select('id', 'first_name', 'last_name')
+                ->orderBy('first_name')
+                ->get()
+                ->map(function($item) {
+                    return [
+                        'id' => $item->id,
+                        'name' => $item->full_name,
+                    ];
+                });
+        } else {
+            return response()->json([]);
+        }
+
+        return response()->json($employees);
     }
 }

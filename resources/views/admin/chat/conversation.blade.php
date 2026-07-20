@@ -25,19 +25,7 @@
                                     <span id="last-seen-text" class="text-muted"></span>
                                 </small>
                             </div>
-                            {{-- === CALL BUTTONS === --}}
-                            <div class="ml-auto">
-                                <button id="audio-call-btn" class="btn btn-success btn-sm mr-1" title="Audio Call">
-                                    <i class="fa fa-phone"></i>
-                                </button>
-                                <button id="video-call-btn" class="btn btn-info btn-sm mr-1" title="Video Call">
-                                    <i class="fa fa-video-camera"></i>
-                                </button>
-                                <a href="{{ route('admin.calls.history') }}" class="btn btn-secondary btn-sm" title="Call History">
-                                    <i class="fa fa-history"></i>
-                                </a>
-                            </div>
-                            {{-- === END CALL BUTTONS === --}}
+                            {{-- यहाँ से कॉल बटन हटा दिए गए हैं --}}
                         </div>
                     </div>
                     <div class="card-body chat-box" id="chat-box" style="height: 400px; overflow-y: auto;">
@@ -116,11 +104,7 @@
                                 <button type="submit" class="btn btn-primary ml-2">
                                     <i class="fa fa-send"></i> Send
                                 </button>
-
-                                {{-- === END CALL BUTTON === --}}
-                                <button type="button" id="end-call-btn" class="btn btn-danger ml-2" style="display:none;">
-                                    <i class="fa fa-phone"></i> End Call <span id="call-duration">0:00</span>
-                                </button>
+                                {{-- यहाँ से "End Call" बटन पूरी तरह हटा दिया गया है --}}
                             </div>
                             {{-- Preview area for selected files --}}
                             <div id="file-preview-container" class="mt-2 d-flex flex-wrap"></div>
@@ -136,9 +120,9 @@
 @push('scripts')
 <script src="https://js.pusher.com/7.0/pusher.min.js"></script>
 <script>
-    window.csrfToken = window.csrfToken || document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-    window.userId = window.userId || {{ Auth::id() }};
-    window.chatUserId = window.chatUserId || {{ $user->id }};
+    window.csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    window.userId = {{ Auth::id() }};
+    window.chatUserId = {{ $user->id }};
 
     @if(env('PUSHER_APP_KEY'))
     window.pusher = new Pusher('{{ env("PUSHER_APP_KEY") }}', {
@@ -337,9 +321,5 @@
     $(document).ready(function() {
         $('#chat-box').scrollTop($('#chat-box')[0].scrollHeight);
     });
-
-    const callScript = document.createElement('script');
-    callScript.src = "{{ asset('admin/assets/js/call.js') }}";
-    document.head.appendChild(callScript);
 </script>
 @endpush

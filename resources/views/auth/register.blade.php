@@ -9,7 +9,17 @@
             <form action="{{ route('register') }}" method="POST">
                 @csrf
                 <div class="account-logo">
-                    <a href="{{ route('admin.dashboard') }}"><img src="{{ asset('assets/img/logo-dark.png') }}" alt=""></a>
+                    <a href="{{ route('admin.dashboard') }}">
+                        {{-- Dynamic logo --}}
+                        @php
+                            $logo = \App\Models\Setting::get('logo_header');
+                        @endphp
+                        @if($logo)
+                            <img src="{{ asset('storage/' . $logo) }}" alt="Company Logo">
+                        @else
+                            <img src="{{ asset('assets/img/logo-dark.png') }}" alt="Default Logo">
+                        @endif
+                    </a>
                 </div>
                 <div class="form-group">
                     <label>Username</label>
@@ -32,7 +42,7 @@
                 </div>
                 <div class="form-group checkbox">
                     <label>
-                        <input type="checkbox" name="terms" required> I have read and agree the Terms & Conditions
+                        <input type="checkbox" name="terms" required> I have read and agree the <strong>Terms & Conditions</strong>
                     </label>
                     @error('terms') <span class="text-danger">{{ $message }}</span> @enderror
                 </div>

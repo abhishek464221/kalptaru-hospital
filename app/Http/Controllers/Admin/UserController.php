@@ -11,11 +11,15 @@ use Illuminate\Support\Facades\File;
 
 class UserController extends Controller
 {
-    public function index()
-    {
-        $users = User::with('role')->latest()->get();
-        return view('admin.user.index', compact('users'));
-    }
+    public function index(Request $request)
+{
+    $users = User::with('role')
+        ->search($request->search, ['name', 'email'])
+        ->latest()
+        ->paginate(10);
+
+    return view('admin.user.index', compact('users'));
+}
 
     public function create()
     {

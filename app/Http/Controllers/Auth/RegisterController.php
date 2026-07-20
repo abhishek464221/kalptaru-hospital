@@ -8,6 +8,7 @@ use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Auth;
 
 class RegisterController extends Controller
 {
@@ -39,14 +40,19 @@ class RegisterController extends Controller
 
     protected function create(array $data)
     {
-        // Get default role (e.g., 'user' or any other)
-        $role = Role::where('slug', 'user')->first();
+        $role = Role::firstOrCreate(
+            ['slug' => 'user'],
+            [
+                'name' => 'User',
+                'description' => 'Default user role',
+            ]
+        );
 
         return User::create([
-            'name' => $data['name'],
-            'email' => $data['email'],
+            'name'     => $data['name'],
+            'email'    => $data['email'],
             'password' => Hash::make($data['password']),
-            'role_id' => $role ? $role->id : null,
+            'role_id'  => $role->id,
         ]);
     }
 }

@@ -10,9 +10,23 @@ use Illuminate\Support\Facades\Storage;
 
 class DoctorController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $doctors = Doctor::all();
+        $doctors = Doctor::search(
+                $request->search,
+                [
+                    'doctor_id',
+                    'first_name',
+                    'last_name',
+                    'email',
+                    'phone',
+                    'specialization',
+                    'qualification'
+                ]
+            )
+            ->latest()
+            ->paginate(10);
+
         return view('admin.doctor.index', compact('doctors'));
     }
 
@@ -38,7 +52,7 @@ class DoctorController extends Controller
             'qualification'    => 'nullable|string',
             'experience_years' => 'nullable|integer|min:0',
             'is_active'        => 'sometimes|boolean',
-            'image'            => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image'            => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ]);
 
         $data = $validated;
@@ -64,8 +78,6 @@ class DoctorController extends Controller
         return view('admin.doctor.edit', compact('doctor'));
     }
 
-
-
     public function update(Request $request, Doctor $doctor)
     {
         try {
@@ -83,7 +95,7 @@ class DoctorController extends Controller
                 'qualification'    => 'nullable|string',
                 'experience_years' => 'nullable|integer|min:0',
                 'is_active'        => 'sometimes|boolean',
-                'image'            => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+                'image'            => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             ]);
 
             $validated['available_days'] = $request->input('available_days', []);

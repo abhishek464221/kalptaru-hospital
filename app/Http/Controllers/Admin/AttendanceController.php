@@ -9,27 +9,32 @@ use Illuminate\Http\Request;
 
 class AttendanceController extends Controller
 {
-    /**
-     * Display a listing of attendances.
-     */
-    public function index()
+    public function index(Request $request)
     {
-        $attendances = Attendance::with('employee')->get();
+        $attendances = Attendance::with("employee")
+            ->search(
+                $request->search,
+                [
+                    'employee_id',
+                    'attendance_date',
+                    'check_in',
+                    'check_out',
+                    'status',
+                    'remarks'
+                ]
+            )
+            ->latest()
+            ->paginate(10);
+
         return view('admin.attendance.index', compact('attendances'));
     }
 
-    /**
-     * Show the form for creating a new attendance.
-     */
     public function create()
     {
         $employees = Employee::all();
         return view('admin.attendance.create', compact('employees'));
     }
 
-    /**
-     * Store a newly created attendance.
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -47,18 +52,13 @@ class AttendanceController extends Controller
             ->with('success', 'Attendance marked successfully.');
     }
 
-    /**
-     * Show the form for editing the specified attendance.
-     */
     public function edit(Attendance $attendance)
     {
         $employees = Employee::all();
         return view('admin.attendance.edit', compact('attendance', 'employees'));
     }
 
-    /**
-     * Update the specified attendance.
-     */
+
     public function update(Request $request, Attendance $attendance)
     {
         $request->validate([
@@ -75,10 +75,7 @@ class AttendanceController extends Controller
         return redirect()->route('admin.attendances.index')
             ->with('success', 'Attendance updated successfully.');
     }
-
-    /**
-     * Remove the specified attendance.
-     */
+    
     public function destroy(Attendance $attendance)
     {
         $attendance->delete();

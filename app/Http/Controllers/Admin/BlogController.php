@@ -11,27 +11,32 @@ use Illuminate\Support\Facades\Storage;
 
 class BlogController extends Controller
 {
-    /**
-     * Display a listing of blogs.
-     */
-    public function index()
+   public function index(Request $request)
     {
-        $blogs = Blog::with('author')->orderBy('created_at', 'desc')->get();
+        $blogs = Blog::with('author')
+            ->search(
+                $request->search,
+                [
+                    'title',
+                    'slug',
+                    'content',
+                    'status',
+                    'category'
+                ]
+            )
+            ->latest()
+            ->paginate(10);
+
         return view('admin.blog.index', compact('blogs'));
     }
-
-    /**
-     * Show the form for creating a new blog.
-     */
+    
     public function create()
     {
         $users = User::all();
         return view('admin.blog.create', compact('users'));
     }
 
-    /**
-     * Store a newly created blog.
-     */
+    
     public function store(Request $request)
     {
         $request->validate([
@@ -49,25 +54,20 @@ class BlogController extends Controller
 
         $data = $request->all();
 
-        // Generate slug if not provided
         if (empty($data['slug'])) {
             $data['slug'] = Str::slug($data['title']);
         }
 
-        // Handle tags (convert comma-separated to array)
         if ($request->filled('tags')) {
             $data['tags'] = array_map('trim', explode(',', $request->tags));
         } else {
             $data['tags'] = [];
         }
-
-        // Handle featured image
         if ($request->hasFile('featured_image')) {
             $path = $request->file('featured_image')->store('blogs', 'public');
             $data['featured_image'] = $path;
         }
 
-        // Set published_at if status is published
         if ($request->status == 'published' && empty($data['published_at'])) {
             $data['published_at'] = now();
         }
@@ -78,9 +78,7 @@ class BlogController extends Controller
             ->with('success', 'Blog created successfully.');
     }
 
-    /**
-     * Show the form for editing the specified blog.
-     */
+
     public function edit(Blog $blog)
     {
         $users = User::all();
@@ -88,9 +86,7 @@ class BlogController extends Controller
         return view('admin.blog.edit', compact('blog', 'users', 'tagsString'));
     }
 
-    /**
-     * Update the specified blog.
-     */
+
     public function update(Request $request, Blog $blog)
     {
         $request->validate([
@@ -108,21 +104,18 @@ class BlogController extends Controller
 
         $data = $request->all();
 
-        // Generate slug if not provided
         if (empty($data['slug'])) {
             $data['slug'] = Str::slug($data['title']);
         }
 
-        // Handle tags
         if ($request->filled('tags')) {
             $data['tags'] = array_map('trim', explode(',', $request->tags));
         } else {
             $data['tags'] = [];
         }
 
-        // Handle featured image
         if ($request->hasFile('featured_image')) {
-            // Delete old image
+
             if ($blog->featured_image) {
                 Storage::disk('public')->delete($blog->featured_image);
             }
@@ -130,7 +123,6 @@ class BlogController extends Controller
             $data['featured_image'] = $path;
         }
 
-        // Set published_at if status is published and not set
         if ($request->status == 'published' && empty($data['published_at'])) {
             $data['published_at'] = now();
         }
@@ -141,12 +133,8 @@ class BlogController extends Controller
             ->with('success', 'Blog updated successfully.');
     }
 
-    /**
-     * Remove the specified blog.
-     */
     public function destroy(Blog $blog)
     {
-        // Delete featured image
         if ($blog->featured_image) {
             Storage::disk('public')->delete($blog->featured_image);
         }

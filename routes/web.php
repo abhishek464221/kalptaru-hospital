@@ -27,10 +27,13 @@ use App\Http\Controllers\Admin\ActivityController;
 use App\Http\Controllers\Admin\BlogController;
 use App\Http\Controllers\Admin\GalleryController;
 use App\Http\Controllers\Admin\CalendarController;
-use App\Http\Controllers\Admin\CallController;
 use App\Http\Controllers\Admin\ChatController;
 use App\Http\Controllers\Admin\EmailController;
 use App\Http\Controllers\Admin\SubscriberController;
+use App\Http\Controllers\Admin\PatientBillController;
+use App\Http\Controllers\Admin\PaymentGatewayController;
+use App\Http\Controllers\Admin\PayrollController;
+use App\Http\Controllers\Admin\RecipientAccountController;
 
 
 use App\Http\Controllers\Frontend\AppointmentController as FrontendAppointmentController;
@@ -39,11 +42,13 @@ use App\Http\Controllers\Frontend\DoctorController as FrontendDoctorController;
 use App\Http\Controllers\Frontend\GalleryController as FrontendGalleryController;
 use App\Http\Controllers\Frontend\BlogController as FrontendBlogController;
 use App\Http\Controllers\Frontend\ContactController;
+use App\Http\Controllers\Frontend\SubscriberController as FrontendSubscriberController;
 
 
 
 // ---- Appointment Booking ----
 Route::post('/appointment/book', [FrontendAppointmentController::class, 'store'])->name('frontend.appointment.store');
+Route::post('/subscribe', [FrontendSubscriberController::class, 'store'])->name('frontend.subscriber.store');
 
 // ---- Department Routes ----
 Route::get('/departments', [FrontendDepartmentController::class, 'index'])->name('frontend.departments.index');
@@ -100,6 +105,9 @@ Route::post('/password/reset', [ResetPasswordController::class, 'reset']);
 */
 
 Route::prefix('admin')->name('admin.') ->middleware('auth')->group(function () {
+
+Route::post('/admin/notifications/{notification}/read', [App\Http\Controllers\Admin\NotificationController::class, 'markAsRead'])
+    ->name('admin.notification.read');
 
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -216,12 +224,8 @@ Route::prefix('admin')->name('admin.') ->middleware('auth')->group(function () {
 
 
     // Salary Structure Routes
-    Route::get('/salary-structures', [SalaryStructureController::class, 'index'])->name('salary-structures.index');
-    Route::get('/salary-structures/create', [SalaryStructureController::class, 'create'])->name('salary-structures.create');
-    Route::post('/salary-structures', [SalaryStructureController::class, 'store'])->name('salary-structures.store');
-    Route::get('/salary-structures/{salaryStructure}/edit', [SalaryStructureController::class, 'edit'])->name('salary-structures.edit');
-    Route::put('/salary-structures/{salaryStructure}', [SalaryStructureController::class, 'update'])->name('salary-structures.update');
-    Route::delete('/salary-structures/{salaryStructure}', [SalaryStructureController::class, 'destroy'])->name('salary-structures.destroy');
+    Route::resource('salary-structures', SalaryStructureController::class);
+    Route::get('get-employees', [SalaryStructureController::class, 'getEmployees'])->name('salary-structures.get-employees');
 
     // Payment Routes
     Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
@@ -261,19 +265,6 @@ Route::prefix('admin')->name('admin.') ->middleware('auth')->group(function () {
     Route::resource('calendars', CalendarController::class)->except(['show']);
     Route::get('/calendar/events', [CalendarController::class, 'getEvents'])->name('calendars.get-events');
 
-    // Call Routes
- Route::post('/calls/offer', [CallController::class, 'offer'])->name('calls.offer');
-    Route::post('/calls/answer', [CallController::class, 'answer'])->name('calls.answer');
-    Route::post('/calls/ice', [CallController::class, 'iceCandidate'])->name('calls.ice');
-    Route::post('/calls/end', [CallController::class, 'endCall'])->name('calls.end');
-
-    // Call Management Views
-    Route::get('/calls/history', [CallController::class, 'history'])->name('calls.history');
-    Route::get('/calls/create', [CallController::class, 'create'])->name('calls.create');
-    Route::get('/calls/voice', [CallController::class, 'voiceCall'])->name('calls.voice');
-    Route::get('/calls/video', [CallController::class, 'videoCall'])->name('calls.video');
-    Route::get('/calls/incoming', [CallController::class, 'incomingCall'])->name('calls.incoming');
-
     // Chat Routes
     Route::get('/chats/unread-count', [ChatController::class, 'unreadCount'])->name('chats.unread-count');
     Route::get('/chats/online-status', [ChatController::class, 'onlineStatus'])->name('chats.online-status');
@@ -291,6 +282,28 @@ Route::prefix('admin')->name('admin.') ->middleware('auth')->group(function () {
     Route::delete('/subscribers/{subscriber}', [SubscriberController::class, 'destroy'])->name('subscribers.destroy');
     Route::post('/subscribers/{subscriber}/toggle', [SubscriberController::class, 'toggle'])->name('subscribers.toggle');
     Route::get('/subscribers/export', [SubscriberController::class, 'export'])->name('subscribers.export');
+
+    // Patient Bill Routes
+    Route::resource('bills', PatientBillController::class);
+    Route::get('bills/{bill}/invoice', [PatientBillController::class, 'generateInvoice'])->name('bills.invoice');
+    Route::get('bills/{bill}/view-invoice', [PatientBillController::class, 'viewInvoice'])->name('bills.view-invoice');
+    Route::get('bills/{bill}/qr', [PatientBillController::class, 'showQR'])->name('bills.qr');
+        Route::post('bills/{bill}/verify-payment', [PatientBillController::class, 'verifyPayment'])->name('bills.payment.verify');
+
+    Route::resource('payment-gateways', PaymentGatewayController::class);
+    Route::post('payment-gateways/{paymentGateway}/toggle', [PaymentGatewayController::class, 'toggleStatus'])
+        ->name('payment-gateways.toggle');
+
+    Route::resource('payrolls', PayrollController::class);
+    Route::get('payrolls/{payroll}/payslip', [PayrollController::class, 'generatePayslip'])->name('payrolls.payslip');
+    Route::post('payrolls/{payroll}/approve', [PayrollController::class, 'approve'])->name('payrolls.approve');
+    Route::post('payrolls/{payroll}/paid', [PayrollController::class, 'markAsPaid'])->name('payrolls.paid');
+    Route::post('payrolls/bulk-pay', [PayrollController::class, 'bulkPay'])->name('payrolls.bulk-pay');
+    Route::post('payrolls/generate', [PayrollController::class, 'runPayrollGeneration'])->name('payrolls.generate');
+
+    Route::resource('recipient-accounts', RecipientAccountController::class);
+    Route::post('recipient-accounts/{recipientAccount}/toggle', [RecipientAccountController::class, 'toggleStatus'])->name('recipient-accounts.toggle');
+    Route::get('get-recipients', [RecipientAccountController::class, 'getRecipients'])->name('recipient-accounts.get-recipients');
 });
 
 // Frontend routes

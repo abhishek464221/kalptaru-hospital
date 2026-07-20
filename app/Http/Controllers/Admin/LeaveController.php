@@ -10,28 +10,33 @@ use Illuminate\Http\Request;
 
 class LeaveController extends Controller
 {
-    /**
-     * Display a listing of leaves.
-     */
-    public function index()
+    public function index(Request $request)
     {
-        $leaves = Leave::with(['employee', 'approver'])->get();
+        $leaves = Leave::with(['employee', 'approver'])
+            ->search(
+                $request->search,
+                [
+                    'leave_type',
+                    'start_date',
+                    'end_date',
+                    'status',
+                    'reason',
+                    'rejection_reason'
+                ]
+            )
+            ->latest()
+            ->paginate(10);
+
         return view('admin.leave.index', compact('leaves'));
     }
 
-    /**
-     * Show the form for creating a new leave.
-     */
     public function create()
     {
         $employees = Employee::all();
-        $users = User::all(); // for approver dropdown
+        $users = User::all(); 
         return view('admin.leave.create', compact('employees', 'users'));
     }
 
-    /**
-     * Store a newly created leave.
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -51,9 +56,6 @@ class LeaveController extends Controller
             ->with('success', 'Leave request created successfully.');
     }
 
-    /**
-     * Show the form for editing the specified leave.
-     */
     public function edit(Leave $leave)
     {
         $employees = Employee::all();
@@ -61,9 +63,6 @@ class LeaveController extends Controller
         return view('admin.leave.edit', compact('leave', 'employees', 'users'));
     }
 
-    /**
-     * Update the specified leave.
-     */
     public function update(Request $request, Leave $leave)
     {
         $request->validate([
@@ -83,9 +82,6 @@ class LeaveController extends Controller
             ->with('success', 'Leave request updated successfully.');
     }
 
-    /**
-     * Remove the specified leave.
-     */
     public function destroy(Leave $leave)
     {
         $leave->delete();

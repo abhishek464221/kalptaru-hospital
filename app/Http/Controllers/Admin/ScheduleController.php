@@ -10,18 +10,23 @@ use Illuminate\Http\Request;
 
 class ScheduleController extends Controller
 {
-    /**
-     * Display a listing of schedules.
-     */
-    public function index()
+    public function index(Request $request)
     {
-        $schedules = Schedule::with(['employee', 'doctor'])->get();
+        $schedules = Schedule::with(['employee', 'doctor'])
+            ->search(
+                $request->search,
+                [
+                    'day_of_week',
+                    'start_time',
+                    'end_time',
+                    'notes'
+                ]
+            )
+            ->latest()
+            ->paginate(10);
+
         return view('admin.schedule.index', compact('schedules'));
     }
-
-    /**
-     * Show the form for creating a new schedule.
-     */
     public function create()
     {
         $employees = Employee::all();
@@ -29,9 +34,6 @@ class ScheduleController extends Controller
         return view('admin.schedule.create', compact('employees', 'doctors'));
     }
 
-    /**
-     * Store a newly created schedule.
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -44,7 +46,6 @@ class ScheduleController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        // Ensure at least one of employee_id or doctor_id is provided
         if (empty($request->employee_id) && empty($request->doctor_id)) {
             return back()->withErrors(['employee_id' => 'Please select either an Employee or a Doctor.'])
                 ->withInput();
@@ -59,9 +60,6 @@ class ScheduleController extends Controller
             ->with('success', 'Schedule created successfully.');
     }
 
-    /**
-     * Show the form for editing the specified schedule.
-     */
     public function edit(Schedule $schedule)
     {
         $employees = Employee::all();
@@ -69,9 +67,6 @@ class ScheduleController extends Controller
         return view('admin.schedule.edit', compact('schedule', 'employees', 'doctors'));
     }
 
-    /**
-     * Update the specified schedule.
-     */
     public function update(Request $request, Schedule $schedule)
     {
         $request->validate([
@@ -84,7 +79,6 @@ class ScheduleController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        // Ensure at least one of employee_id or doctor_id is provided
         if (empty($request->employee_id) && empty($request->doctor_id)) {
             return back()->withErrors(['employee_id' => 'Please select either an Employee or a Doctor.'])
                 ->withInput();
@@ -99,9 +93,6 @@ class ScheduleController extends Controller
             ->with('success', 'Schedule updated successfully.');
     }
 
-    /**
-     * Remove the specified schedule.
-     */
     public function destroy(Schedule $schedule)
     {
         $schedule->delete();

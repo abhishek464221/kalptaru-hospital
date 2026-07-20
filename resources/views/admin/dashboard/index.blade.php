@@ -3,7 +3,7 @@
 @section('content')
 <div class="page-wrapper">
     <div class="content">
-        <!-- Stats Cards (unchanged) -->
+        <!-- Top Stats Cards -->
         <div class="row">
             <div class="col-md-6 col-sm-6 col-lg-6 col-xl-3">
                 <div class="dash-widget">
@@ -43,29 +43,43 @@
             </div>
         </div>
 
-        <!-- Charts (Dynamic Data) -->
+        <!-- Charts Row -->
         <div class="row">
+            <!-- Line Chart -->
             <div class="col-12 col-md-6 col-lg-6 col-xl-6">
                 <div class="card">
                     <div class="card-body">
                         <div class="chart-title">
                             <h4>Patient Total</h4>
-                            <span class="float-right"><i class="fa fa-caret-up" aria-hidden="true"></i> 15% Higher than Last Month</span>
+                            <span class="float-right">
+                                <i class="fa fa-{{ $percentageChange >= 0 ? 'caret-up' : 'caret-down' }}" aria-hidden="true"></i>
+                                {{ abs($percentageChange) }}% {{ $trendText }}
+                            </span>
                         </div>
                         <canvas id="linegraph"></canvas>
                     </div>
                 </div>
             </div>
+
+            <!-- Bar Chart with Checkboxes -->
             <div class="col-12 col-md-6 col-lg-6 col-xl-6">
                 <div class="card">
                     <div class="card-body">
                         <div class="chart-title">
                             <h4>Patients In</h4>
                             <div class="float-right">
-                                <ul class="chat-user-total">
-                                    <li><i class="fa fa-circle current-users" aria-hidden="true"></i>ICU</li>
-                                    <li><i class="fa fa-circle old-users" aria-hidden="true"></i> OPD</li>
-                                </ul>
+                                <!-- Checkbox Buttons -->
+                                <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                                    <label class="btn btn-outline-primary active" id="toggle-opd">
+                                        <input type="checkbox" checked autocomplete="off"> OPD
+                                    </label>
+                                    <label class="btn btn-outline-info active" id="toggle-ipd">
+                                        <input type="checkbox" checked autocomplete="off"> IPD
+                                    </label>
+                                    <label class="btn btn-outline-warning active" id="toggle-icu">
+                                        <input type="checkbox" checked autocomplete="off"> ICU
+                                    </label>
+                                </div>
                             </div>
                         </div>
                         <canvas id="bargraph"></canvas>
@@ -74,7 +88,7 @@
             </div>
         </div>
 
-        <!-- Upcoming Appointments (unchanged) -->
+        <!-- Upcoming Appointments & Recent Doctors -->
         <div class="row">
             <div class="col-12 col-md-6 col-lg-8 col-xl-8">
                 <div class="card">
@@ -97,11 +111,11 @@
                                     @forelse($upcomingAppointments as $appointment)
                                         <tr>
                                             <td style="min-width: 200px;">
-                                                <a class="avatar" href="{{ route('admin.profile') }}">
+                                                <a class="avatar" href="#">
                                                     {{ strtoupper(substr($appointment->patient->first_name ?? 'N', 0, 1)) }}
                                                 </a>
                                                 <h2>
-                                                    <a href="{{ route('admin.profile') }}">
+                                                    <a href="#">
                                                         {{ $appointment->patient->full_name ?? 'N/A' }}
                                                         <span>{{ $appointment->patient->address ?? '' }}</span>
                                                     </a>
@@ -133,7 +147,6 @@
                 </div>
             </div>
 
-            <!-- Recent Doctors (unchanged) -->
             <div class="col-12 col-md-6 col-lg-4 col-xl-4">
                 <div class="card member-panel">
                     <div class="card-header bg-white">
@@ -145,8 +158,11 @@
                                 <li>
                                     <div class="contact-cont">
                                         <div class="float-left user-img m-r-10">
-                                            <a href="{{ route('admin.profile') }}" title="{{ $doctor->full_name }}">
-                                                <img src="{{ asset('assets/img/user.jpg') }}" alt="" class="w-40 rounded-circle">
+                                            <a href="#" title="{{ $doctor->full_name }}">
+                                                @php
+                                                    $img = url($doctor->image);
+                                                @endphp
+                                                <img src="{{ $img }}" alt="" class="w-40 rounded-circle">
                                                 <span class="status online"></span>
                                             </a>
                                         </div>
@@ -168,7 +184,6 @@
             </div>
         </div>
 
-        <!-- New Patients & Hospital Management (unchanged) -->
         <div class="row">
             <div class="col-12 col-md-6 col-lg-8 col-xl-8">
                 <div class="card">
@@ -183,14 +198,13 @@
                                     @forelse($recentPatients as $patient)
                                         <tr>
                                             <td>
-                                                <img width="28" height="28" class="rounded-circle" src="{{ asset('assets/img/user.jpg') }}" alt="">
                                                 <h2>{{ $patient->full_name }}</h2>
                                             </td>
                                             <td>{{ $patient->email ?? 'N/A' }}</td>
                                             <td>{{ $patient->phone }}</td>
                                             <td>
                                                 <button class="btn btn-primary btn-primary-one float-right">
-                                                    {{ $patient->medical_history ? Str::limit($patient->medical_history, 15) : 'General' }}
+                                                    {{ $patient->patient_type ?? 'General' }}
                                                 </button>
                                             </td>
                                         </tr>
@@ -206,59 +220,29 @@
                 </div>
             </div>
 
-            <!-- Hospital Management Chart (dummy – no changes) -->
             <div class="col-12 col-md-6 col-lg-4 col-xl-4">
                 <div class="hospital-barchart">
                     <h4 class="card-title d-inline-block">Hospital Management</h4>
                 </div>
                 <div class="bar-chart">
                     <div class="legend">
-                        <div class="item"><h4>Level1</h4></div>
-                        <div class="item"><h4>Level2</h4></div>
-                        <div class="item text-right"><h4>Level3</h4></div>
-                        <div class="item text-right"><h4>Level4</h4></div>
+                        @foreach($hospitalStats as $stat)
+                            <div class="item">
+                                <h4>{{ $stat['label'] }} ({{ $stat['count'] }})</h4>
+                            </div>
+                        @endforeach
                     </div>
                     <div class="chart clearfix">
-                        <div class="item">
-                            <div class="bar">
-                                <span class="percent">16%</span>
-                                <div class="item-progress" data-percent="16">
-                                    <span class="title">OPD Patient</span>
+                        @foreach($hospitalStats as $stat)
+                            <div class="item">
+                                <div class="bar">
+                                    <span class="percent">{{ $stat['percent'] }}%</span>
+                                    <div class="item-progress" data-percent="{{ $stat['percent'] }}" style="width: {{ $stat['percent'] }}%;">
+                                        <span class="title">{{ $stat['label'] }}</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="item">
-                            <div class="bar">
-                                <span class="percent">71%</span>
-                                <div class="item-progress" data-percent="71">
-                                    <span class="title">New Patient</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="item">
-                            <div class="bar">
-                                <span class="percent">82%</span>
-                                <div class="item-progress" data-percent="82">
-                                    <span class="title">Laboratory Test</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="item">
-                            <div class="bar">
-                                <span class="percent">67%</span>
-                                <div class="item-progress" data-percent="67">
-                                    <span class="title">Treatment</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="item">
-                            <div class="bar">
-                                <span class="percent">30%</span>
-                                <div class="item-progress" data-percent="30">
-                                    <span class="title">Discharge</span>
-                                </div>
-                            </div>
-                        </div>
+                        @endforeach
                     </div>
                 </div>
             </div>
@@ -269,9 +253,6 @@
 
 @push('scripts')
 <script>
-    // ============================================================
-    //  LINE CHART (Patient Total) – Dynamic
-    // ============================================================
     var ctx1 = document.getElementById('linegraph').getContext('2d');
     var lineChart = new Chart(ctx1, {
         type: 'line',
@@ -294,26 +275,55 @@
         }
     });
 
-    // ============================================================
-    //  BAR CHART (Patients In: ICU vs OPD) – Dynamic
-    // ============================================================
     var ctx2 = document.getElementById('bargraph').getContext('2d');
     var barChart = new Chart(ctx2, {
         type: 'bar',
         data: {
-            labels: @json($barChartData['labels']),
-            datasets: [{
-                label: 'Patients',
-                data: @json($barChartData['data']),
-                backgroundColor: ['#1b8cff', '#4caf50'],
-                borderColor: ['#1b8cff', '#4caf50'],
-                borderWidth: 1
-            }]
+            labels: ['OPD', 'IPD', 'ICU'],
+            datasets: [
+                {
+                    label: 'OPD',
+                    data: [{{ $opdCount }}, 0, 0],
+                    backgroundColor: '#0d6efd',
+                    borderColor: '#0d6efd',
+                    borderWidth: 1
+                },
+                {
+                    label: 'IPD',
+                    data: [0, {{ $ipdCount }}, 0],
+                    backgroundColor: '#17a2b8',
+                    borderColor: '#17a2b8',
+                    borderWidth: 1
+                },
+                {
+                    label: 'ICU',
+                    data: [0, 0, {{ $icuCount }}],
+                    backgroundColor: '#ffc107',
+                    borderColor: '#ffc107',
+                    borderWidth: 1
+                }
+            ]
         },
         options: {
             responsive: true,
             scales: { y: { beginAtZero: true } },
             plugins: { legend: { display: false } }
+        }
+    });
+
+    const toggleLabels = document.querySelectorAll('.btn-group-toggle .btn');
+    toggleLabels.forEach((label, index) => {
+        const checkbox = label.querySelector('input[type="checkbox"]');
+        if (checkbox) {
+            checkbox.addEventListener('change', function(e) {
+                if (this.checked) {
+                    label.classList.add('active');
+                } else {
+                    label.classList.remove('active');
+                }
+                barChart.data.datasets[index].hidden = !this.checked;
+                barChart.update();
+            });
         }
     });
 </script>

@@ -10,9 +10,25 @@ use Illuminate\Support\Facades\Storage;
 
 class EmployeeController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $employees = Employee::with('department')->get();
+        $employees = Employee::with('department')
+            ->search(
+                $request->search,
+                [
+                    'employee_id',
+                    'first_name',
+                    'last_name',
+                    'email',
+                    'phone',
+                    'job_title',
+                    'gender',
+                    'address'
+                ]
+            )
+            ->latest()
+            ->paginate(10);
+
         return view('admin.employee.index', compact('employees'));
     }
 
@@ -85,9 +101,7 @@ class EmployeeController extends Controller
         $data = $validated;
         $data['is_active'] = $request->has('is_active') ? 1 : 0;
 
-        // Image handling
         if ($request->hasFile('image')) {
-            // Delete old image
             if ($employee->image && Storage::disk('public')->exists($employee->image)) {
                 Storage::disk('public')->delete($employee->image);
             }
@@ -103,7 +117,6 @@ class EmployeeController extends Controller
 
     public function destroy(Employee $employee)
     {
-        // Delete image file
         if ($employee->image && Storage::disk('public')->exists($employee->image)) {
             Storage::disk('public')->delete($employee->image);
         }

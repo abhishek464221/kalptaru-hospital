@@ -8,26 +8,27 @@ use Illuminate\Http\Request;
 
 class RoleController extends Controller
 {
-    /**
-     * Display a listing of roles.
-     */
-    public function index()
+    public function index(Request $request)
     {
-        $roles = Role::all();
+        $roles = Role::search(
+                $request->search,
+                [
+                    'name',
+                    'slug',
+                    'description'
+                ]
+            )
+            ->latest()
+            ->paginate(10);
+
         return view('admin.role.roles-permissions', compact('roles'));
     }
 
-    /**
-     * Show the form for creating a new role.
-     */
     public function create()
     {
         return view('admin.role.add-role');
     }
 
-    /**
-     * Store a newly created role.
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -41,17 +42,11 @@ class RoleController extends Controller
         return redirect()->route('admin.roles.index')->with('success', 'Role created successfully.');
     }
 
-    /**
-     * Show the form for editing the specified role.
-     */
     public function edit(Role $role)
     {
         return view('admin.role.edit-role', compact('role'));
     }
 
-    /**
-     * Update the specified role.
-     */
     public function update(Request $request, Role $role)
     {
         $request->validate([
@@ -65,12 +60,8 @@ class RoleController extends Controller
         return redirect()->route('admin.roles.index')->with('success', 'Role updated successfully.');
     }
 
-    /**
-     * Remove the specified role.
-     */
     public function destroy(Role $role)
     {
-        // Prevent deletion of system roles
         if (in_array($role->slug, ['admin', 'manager', 'accountant'])) {
             return redirect()->route('admin.roles.index')->with('error', 'System roles cannot be deleted.');
         }

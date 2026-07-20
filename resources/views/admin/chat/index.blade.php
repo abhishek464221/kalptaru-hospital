@@ -84,8 +84,5 @@
     .chat-user:hover {
         background-color: #f8f9fa;
     }
-    .message-content {
-        word-wrap: break-word;
-    }
 </style>
 @endpush

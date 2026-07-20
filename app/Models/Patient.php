@@ -1,13 +1,14 @@
 <?php
 
 namespace App\Models;
+use App\Traits\Searchable;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Patient extends Model
 {
-    use HasFactory;
+    use HasFactory, Searchable;
 
     protected $fillable = [
         'patient_id',
@@ -26,6 +27,7 @@ class Patient extends Model
     protected $casts = [
         'date_of_birth' => 'date',
         'is_active' => 'boolean',
+        'patient_type' => 'string',
     ];
 
     // Accessor for full name

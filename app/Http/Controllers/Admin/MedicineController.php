@@ -8,26 +8,29 @@ use Illuminate\Http\Request;
 
 class MedicineController extends Controller
 {
-    /**
-     * Display a listing of medicines.
-     */
-    public function index()
+    public function index(Request $request)
     {
-        $medicines = Medicine::all();
+        $medicines = Medicine::search(
+                $request->search,
+                [
+                    'name',
+                    'category',
+                    'supplier',
+                    'batch_number',
+                    'description'
+                ]
+            )
+            ->latest()
+            ->paginate(10);
+
         return view('admin.medicine.index', compact('medicines'));
     }
 
-    /**
-     * Show the form for creating a new medicine.
-     */
     public function create()
     {
         return view('admin.medicine.create');
     }
 
-    /**
-     * Store a newly created medicine.
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -54,17 +57,11 @@ class MedicineController extends Controller
             ->with('success', 'Medicine created successfully.');
     }
 
-    /**
-     * Show the form for editing the specified medicine.
-     */
     public function edit(Medicine $medicine)
     {
         return view('admin.medicine.edit', compact('medicine'));
     }
 
-    /**
-     * Update the specified medicine.
-     */
     public function update(Request $request, Medicine $medicine)
     {
         $request->validate([
@@ -91,9 +88,6 @@ class MedicineController extends Controller
             ->with('success', 'Medicine updated successfully.');
     }
 
-    /**
-     * Remove the specified medicine.
-     */
     public function destroy(Medicine $medicine)
     {
         $medicine->delete();

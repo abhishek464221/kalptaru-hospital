@@ -10,18 +10,27 @@ use Illuminate\Http\Request;
 
 class PaymentController extends Controller
 {
-    /**
-     * Display a listing of payments.
-     */
-    public function index()
+
+    public function index(Request $request)
     {
-        $payments = Payment::with(['patient', 'appointment'])->get();
+        $payments = Payment::with(['patient', 'appointment'])
+            ->search(
+                $request->search,
+                [
+                    'amount',
+                    'discount',
+                    'tax',
+                    'payment_date',
+                    'payment_method',
+                    'status',
+                    'notes'
+                ]
+            )
+            ->latest()
+            ->paginate(10);
+
         return view('admin.payment.index', compact('payments'));
     }
-
-    /**
-     * Show the form for creating a new payment.
-     */
     public function create()
     {
         $patients = Patient::all();
@@ -29,9 +38,6 @@ class PaymentController extends Controller
         return view('admin.payment.create', compact('patients', 'appointments'));
     }
 
-    /**
-     * Store a newly created payment.
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -56,9 +62,6 @@ class PaymentController extends Controller
             ->with('success', 'Payment created successfully.');
     }
 
-    /**
-     * Show the form for editing the specified payment.
-     */
     public function edit(Payment $payment)
     {
         $patients = Patient::all();
@@ -66,9 +69,6 @@ class PaymentController extends Controller
         return view('admin.payment.edit', compact('payment', 'patients', 'appointments'));
     }
 
-    /**
-     * Update the specified payment.
-     */
     public function update(Request $request, Payment $payment)
     {
         $request->validate([
@@ -92,9 +92,6 @@ class PaymentController extends Controller
             ->with('success', 'Payment updated successfully.');
     }
 
-    /**
-     * Remove the specified payment.
-     */
     public function destroy(Payment $payment)
     {
         $payment->delete();

@@ -9,26 +9,34 @@ use Illuminate\Support\Facades\Auth;
 
 class CalendarController extends Controller
 {
-    /**
-     * Display a listing of calendar events.
-     */
-    public function index()
+
+
+    public function index(Request $request)
     {
-        $events = Calendar::with('user')->orderBy('start_date', 'asc')->get();
+        $events = Calendar::with('user')
+            ->search(
+                $request->search,
+                [
+                    'title',
+                    'description',
+                    'location',
+                    'start_date',
+                    'end_date'
+                ]
+            )
+            ->orderBy('start_date', 'asc')
+            ->paginate(10);
+
         return view('admin.calendar.index', compact('events'));
     }
 
-    /**
-     * Show the form for creating a new event.
-     */
+
     public function create()
     {
         return view('admin.calendar.create');
     }
 
-    /**
-     * Store a newly created event.
-     */
+
     public function store(Request $request)
     {
         $request->validate([
@@ -47,7 +55,6 @@ class CalendarController extends Controller
         $data['user_id'] = Auth::id();
         $data['is_all_day'] = $request->has('is_all_day') ? 1 : 0;
 
-        // If end_date is not set, use start_date
         if (empty($data['end_date'])) {
             $data['end_date'] = $data['start_date'];
         }
@@ -58,17 +65,11 @@ class CalendarController extends Controller
             ->with('success', 'Event created successfully.');
     }
 
-    /**
-     * Show the form for editing the specified event.
-     */
     public function edit(Calendar $calendar)
     {
         return view('admin.calendar.edit', compact('calendar'));
     }
 
-    /**
-     * Update the specified event.
-     */
     public function update(Request $request, Calendar $calendar)
     {
         $request->validate([
@@ -86,7 +87,6 @@ class CalendarController extends Controller
         $data = $request->all();
         $data['is_all_day'] = $request->has('is_all_day') ? 1 : 0;
 
-        // If end_date is not set, use start_date
         if (empty($data['end_date'])) {
             $data['end_date'] = $data['start_date'];
         }
@@ -97,9 +97,7 @@ class CalendarController extends Controller
             ->with('success', 'Event updated successfully.');
     }
 
-    /**
-     * Remove the specified event.
-     */
+
     public function destroy(Calendar $calendar)
     {
         $calendar->delete();
@@ -107,9 +105,6 @@ class CalendarController extends Controller
             ->with('success', 'Event deleted successfully.');
     }
 
-    /**
-     * Get events for JSON (for calendar view).
-     */
     public function getEvents(Request $request)
     {
         $start = $request->input('start');

@@ -8,12 +8,21 @@ use Illuminate\Http\Request;
 
 class ContactController extends Controller
 {
-    /**
-     * Display all contact messages (Admin Only).
-     */
-    public function index()
+    public function index(Request $request)
     {
-        $contacts = Contact::orderBy('created_at', 'desc')->get();
+        $contacts = Contact::search(
+                $request->search,
+                [
+                    'name',
+                    'email',
+                    'subject',
+                    'phone',
+                    'message'
+                ]
+            )
+            ->latest()
+            ->paginate(10);
+
         return view('admin.contact.index', compact('contacts'));
     }
 }

@@ -47,9 +47,6 @@
 <script src="{{ asset('admin/assets/js/app.js') }}"></script>
 <script src="https://js.pusher.com/7.0/pusher.min.js"></script>
 <script>
-  // ============================================================
-    //                     CSRF TOKEN (FIXED)
-    // ============================================================
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
     // ============================================================
@@ -89,9 +86,6 @@
         setInterval(updateChatCount, 3000);
     });
 
-    // ============================================================
-    //                     PUSHER NOTIFICATIONS (FIXED)
-    // ============================================================
     @if(env('PUSHER_APP_KEY'))
     const userId = {{ Auth::id() }};
     const pusher = new Pusher('{{ env("PUSHER_APP_KEY") }}', {
@@ -105,19 +99,14 @@
         }
     });
 
-    // Subscribe to private user channel
     const channel = pusher.subscribe('private-user.' + userId);
 
-    // Listen for new-notification event
     channel.bind('new-notification', function(data) {
         console.log('🔔 New notification received:', data);
         addNotificationToList(data);
         updateBadgeCount(1);
     });
 
-    // ============================================================
-    //                     HELPER FUNCTIONS
-    // ============================================================
     function addNotificationToList(data) {
         const noMsg = document.getElementById('no-notifications-msg');
         if (noMsg) noMsg.remove();
@@ -152,7 +141,6 @@
 
         list.prepend(li);
 
-        // Add click listener to mark as read
         li.querySelector('.notification-link').addEventListener('click', function(e) {
             const id = this.dataset.id;
             markAsRead(id);
@@ -195,10 +183,7 @@
         });
     }
 
-    // Optional: Mark all as read when dropdown is opened
     $('#notificationDropdown').on('click', function() {
-        // You can implement mark all as read if needed
-        // For now, we'll let individual clicks handle it.
     });
     @endif
 

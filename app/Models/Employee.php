@@ -1,6 +1,10 @@
 <?php
 
 namespace App\Models;
+use App\Traits\Searchable;
+use App\Traits\HasSalary;
+use App\Traits\HasRecipientAccount;
+
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -8,7 +12,7 @@ use Illuminate\Support\Facades\Storage;
 
 class Employee extends Model
 {
-    use HasFactory;
+    use HasFactory, HasSalary, Searchable, HasRecipientAccount;
 
     protected $fillable = [
         'department_id',

@@ -80,6 +80,16 @@
                         </div>
                     </div>
                     <div class="form-group">
+                        <label>Patient Type</label>
+                        <select class="form-control" name="patient_type">
+                            <option value="">Select Type</option>
+                            <option value="OPD" {{ old('patient_type', $patient->patient_type) == 'OPD' ? 'selected' : '' }}>OPD</option>
+                            <option value="IPD" {{ old('patient_type', $patient->patient_type) == 'IPD' ? 'selected' : '' }}>IPD</option>
+                            <option value="ICU" {{ old('patient_type', $patient->patient_type) == 'ICU' ? 'selected' : '' }}>ICU</option>
+                        </select>
+                        @error('patient_type')<span class="text-danger">{{ $message }}</span>@enderror
+                    </div>
+                    <div class="form-group">
                         <label>Address</label>
                         <textarea class="form-control" name="address" rows="3">{{ old('address', $patient->address) }}</textarea>
                     </div>

@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Models;
+use App\Traits\Searchable;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -9,6 +10,7 @@ use Illuminate\Support\Facades\Cache;
 
 class User extends Authenticatable
 {
+    use Searchable;
     use HasFactory, Notifiable;
 
     protected $fillable = [

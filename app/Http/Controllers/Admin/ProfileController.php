@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\File;
 
 class ProfileController extends Controller
 {
@@ -27,11 +28,26 @@ class ProfileController extends Controller
         $user = Auth::user();
 
         $request->validate([
-            'name' => 'required|string|max:255',
+            'name'  => 'required|string|max:255',
             'email' => ['required', 'email', Rule::unique('users')->ignore($user->id)],
+            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
-        $user->update($request->only('name', 'email'));
+        $user->name  = $request->name;
+        $user->email = $request->email;
+
+        if ($request->hasFile('avatar')) {
+            if ($user->image && $user->image != 'default.png' && File::exists(public_path('uploads/users/' . $user->image))) {
+                File::delete(public_path('uploads/users/' . $user->image));
+            }
+
+            $file = $request->file('avatar');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $file->move(public_path('uploads/users'), $filename);
+            $user->image = $filename;
+        }
+
+        $user->save();
 
         return redirect()->route('admin.profile')->with('success', 'Profile updated successfully.');
     }
@@ -45,7 +61,7 @@ class ProfileController extends Controller
     {
         $request->validate([
             'current_password' => 'required|string|min:6',
-            'new_password' => 'required|string|min:6|confirmed',
+            'new_password'     => 'required|string|min:6|confirmed',
         ]);
 
         $user = Auth::user();
@@ -54,7 +70,8 @@ class ProfileController extends Controller
             return back()->withErrors(['current_password' => 'Current password is incorrect.']);
         }
 
-        $user->update(['password' => Hash::make($request->new_password)]);
+        $user->password = Hash::make($request->new_password);
+        $user->save();
 
         return redirect()->route('admin.profile')->with('success', 'Password changed successfully.');
     }

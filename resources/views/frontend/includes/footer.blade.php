@@ -86,10 +86,23 @@
                             <h3 class="widget-title uni-uppercase">News<span>letter</span></h3>
                             <div class="widget-content">
                                 <div class="uni-footer-newletter">
-                                    <div class="input-group">
-                                        <input type="email" class="form-control" placeholder="Enter your email">
-                                        <button class="btn btn-sub" type="submit">subscribe</button>
-                                    </div>
+                                    <!-- Subscribe Form -->
+                                    <form id="subscribeForm" action="{{ route('frontend.subscriber.store') }}" method="POST">
+                                        @csrf
+                                        <div class="input-group">
+                                            <input type="email" 
+                                                class="form-control" 
+                                                name="email" 
+                                                id="subscribeEmail" 
+                                                placeholder="Enter your email" 
+                                                required>
+                                            <button class="btn btn-sub" type="submit" id="subscribeMessage">
+                                                Subscribe
+                                            </button>
+                                        </div>
+                                        <div id="subscribeMessage" class="mt-2"></div>
+                                    </form>
+
                                     <div class="uni-social">
                                         <h4>Follow us</h4>
                                         <ul>
@@ -146,3 +159,47 @@
         </div>
     </div>
 </footer>
+@push('scripts')
+<script>
+$(document).ready(function() {
+    $('#subscribeForm').on('submit', function(e) {
+        e.preventDefault();
+
+        let email = $('#subscribeEmail').val();
+        let btn = $('#subscribeBtn');
+        let msg = $('#subscribeMessage');
+
+        btn.prop('disabled', true).html('Subscribing...');
+        msg.html('');
+
+        $.ajax({
+            url: '{{ route("frontend.subscriber.store") }}',
+            method: 'POST',
+            data: {
+                _token: '{{ csrf_token() }}',
+                email: email
+            },
+            success: function(response) {
+                if (response.success) {
+                    msg.html('<div class="alert alert-success">✅ ' + response.message + '</div>');
+                    $('#subscribeEmail').val('');
+                } else {
+                    msg.html('<div class="alert alert-danger">❌ ' + response.message + '</div>');
+                }
+            },
+            error: function(xhr) {
+                let errors = xhr.responseJSON?.errors;
+                if (errors && errors.email) {
+                    msg.html('<div class="alert alert-danger">❌ ' + errors.email[0] + '</div>');
+                } else {
+                    msg.html('<div class="alert alert-danger">❌ Something went wrong.</div>');
+                }
+            },
+            complete: function() {
+                btn.prop('disabled', false).html('Subscribe');
+            }
+        });
+    });
+});
+</script>
+@endpush

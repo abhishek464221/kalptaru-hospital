@@ -10,18 +10,27 @@ use Illuminate\Http\Request;
 
 class AppointmentController extends Controller
 {
-    /**
-     * Display a listing of appointments.
-     */
-    public function index()
+    public function index(Request $request)
     {
-        $appointments = Appointment::with(['patient', 'doctor'])->get();
+        $appointments = Appointment::with(['patient', 'doctor'])
+            ->search(
+                $request->search,
+                [
+                    'doctor_id',
+                    'patient_id',
+                    'appointment_date',
+                    'appointment_time',
+                    'reason',
+                    'status',
+                    'notes'
+                ]
+            )
+            ->latest()
+            ->paginate(10);
+
         return view('admin.appointment.index', compact('appointments'));
     }
 
-    /**
-     * Show the form for creating a new appointment.
-     */
     public function create()
     {
         $patients = Patient::all();
@@ -29,9 +38,6 @@ class AppointmentController extends Controller
         return view('admin.appointment.create', compact('patients', 'doctors'));
     }
 
-    /**
-     * Store a newly created appointment.
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -50,9 +56,6 @@ class AppointmentController extends Controller
             ->with('success', 'Appointment created successfully.');
     }
 
-    /**
-     * Show the form for editing the specified appointment.
-     */
     public function edit(Appointment $appointment)
     {
         $patients = Patient::all();
@@ -60,9 +63,6 @@ class AppointmentController extends Controller
         return view('admin.appointment.edit', compact('appointment', 'patients', 'doctors'));
     }
 
-    /**
-     * Update the specified appointment.
-     */
     public function update(Request $request, Appointment $appointment)
     {
         $request->validate([
@@ -81,9 +81,6 @@ class AppointmentController extends Controller
             ->with('success', 'Appointment updated successfully.');
     }
 
-    /**
-     * Remove the specified appointment.
-     */
     public function destroy(Appointment $appointment)
     {
         $appointment->delete();

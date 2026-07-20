@@ -9,7 +9,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Events\NewMessage;
 use App\Events\MessageSeen;
-use Illuminate\Support\Facades\Cache;
 
 class ChatController extends Controller
 {
@@ -44,7 +43,6 @@ class ChatController extends Controller
     {
         $messages = Chat::conversation(Auth::id(), $user->id);
 
-        // Mark all messages from this user as seen
         $unreadMessages = Chat::where('sender_id', $user->id)
             ->where('receiver_id', Auth::id())
             ->where('is_read', false)
@@ -55,45 +53,18 @@ class ChatController extends Controller
             try {
                 broadcast(new MessageSeen($msg->id, $msg->sender_id, $msg->receiver_id));
             } catch (\Exception $e) {
-                // Ignore broadcast errors
             }
         }
 
         return view('admin.chat.conversation', compact('user', 'messages'));
     }
 
-    // public function send(Request $request)
-    // {
-    //     $request->validate([
-    //         'receiver_id' => 'required|exists:users,id',
-    //         'message' => 'required|string|max:1000',
-    //     ]);
-
-    //     $message = Chat::create([
-    //         'sender_id' => Auth::id(),
-    //         'receiver_id' => $request->receiver_id,
-    //         'message' => $request->message,
-    //         'status' => 'sent',
-    //         'is_read' => false,
-    //     ]);
-
-    //     try {
-    //         broadcast(new NewMessage($message))->toOthers();
-    //     } catch (\Exception $e) {
-    //         // Ignore broadcast errors
-    //     }
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'message' => $message->load('sender'),
-    //     ]);
-    // }
     public function send(Request $request)
     {
         $request->validate([
             'receiver_id' => 'required|exists:users,id',
             'message' => 'nullable|string|max:1000',
-            'attachments.*' => 'nullable|file|max:20480', // only size limit, no mime restriction
+            'attachments.*' => 'nullable|file|max:20480',
             'attachments' => 'max:5',
         ]);
 
@@ -104,7 +75,7 @@ class ChatController extends Controller
             foreach ($request->file('attachments') as $file) {
                 $path = $file->store('uploads/chats', 'public');
                 $attachmentPaths[] = $path;
-                $attachmentTypes[] = $file->getMimeType(); // store actual mime
+                $attachmentTypes[] = $file->getMimeType();
             }
         }
 
@@ -128,6 +99,7 @@ class ChatController extends Controller
         try {
             broadcast(new NewMessage($message))->toOthers();
         } catch (\Exception $e) {
+            // ignore
         }
 
         return response()->json([
@@ -135,7 +107,6 @@ class ChatController extends Controller
             'message' => $message->load('sender'),
         ]);
     }
-
 
     public function markRead(Request $request)
     {
@@ -153,7 +124,7 @@ class ChatController extends Controller
             try {
                 broadcast(new MessageSeen($msg->id, $msg->sender_id, $msg->receiver_id));
             } catch (\Exception $e) {
-                // Ignore broadcast errors
+               
             }
         }
 

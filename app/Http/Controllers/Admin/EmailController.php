@@ -9,39 +9,38 @@ use Illuminate\Support\Facades\Mail;
 
 class EmailController extends Controller
 {
-    /**
-     * Display a listing of emails.
-     */
     public function index(Request $request)
     {
-        $query = Email::query();
+        $query = Email::search(
+            $request->search,
+            [
+                'to',
+                'subject',
+                'message',
+                'status'
+            ]
+        );
 
-        // Filter by status
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
-        // Filter by date range
         if ($request->filled('from') && $request->filled('to')) {
             $query->whereBetween('created_at', [$request->from, $request->to]);
         }
 
-        $emails = $query->orderBy('created_at', 'desc')->paginate(20);
+        $emails = $query
+            ->latest()
+            ->paginate(20);
 
         return view('admin.email.index', compact('emails'));
     }
 
-    /**
-     * Show the form for creating a new email.
-     */
     public function create()
     {
         return view('admin.email.create');
     }
 
-    /**
-     * Store a newly created email and send it.
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -50,12 +49,10 @@ class EmailController extends Controller
             'subject' => 'required|string|max:255',
             'body' => 'required|string',
             'attachments' => 'nullable|array',
-            'attachments.*' => 'file|max:5120', // 5MB per file
+            'attachments.*' => 'file|max:5120',
         ]);
 
         $data = $request->all();
-
-        // Handle file attachments
         $attachmentPaths = [];
         if ($request->hasFile('attachments')) {
             foreach ($request->file('attachments') as $file) {
@@ -64,8 +61,6 @@ class EmailController extends Controller
             }
         }
         $data['attachments'] = $attachmentPaths;
-
-        // Create email record
         $email = Email::create([
             'recipient_email' => $data['recipient_email'],
             'recipient_name' => $data['recipient_name'],
@@ -74,15 +69,11 @@ class EmailController extends Controller
             'attachments' => $data['attachments'],
             'status' => 'queued',
         ]);
-
-        // Try to send email
         try {
             Mail::send([], [], function ($message) use ($email) {
                 $message->to($email->recipient_email, $email->recipient_name)
                     ->subject($email->subject)
                     ->html($email->body);
-
-                // Attach files if any
                 if ($email->attachments) {
                     foreach ($email->attachments as $attachment) {
                         $message->attach(storage_path('app/public/' . $attachment));
@@ -109,20 +100,13 @@ class EmailController extends Controller
         }
     }
 
-    /**
-     * Display the specified email.
-     */
     public function show(Email $email)
     {
         return view('admin.email.show', compact('email'));
     }
 
-    /**
-     * Remove the specified email.
-     */
     public function destroy(Email $email)
     {
-        // Delete attachments from storage
         if ($email->attachments) {
             foreach ($email->attachments as $attachment) {
                 \Storage::disk('public')->delete($attachment);
@@ -134,9 +118,6 @@ class EmailController extends Controller
             ->with('success', 'Email deleted successfully.');
     }
 
-    /**
-     * Resend a failed email.
-     */
     public function resend(Email $email)
     {
         if ($email->status !== 'failed') {

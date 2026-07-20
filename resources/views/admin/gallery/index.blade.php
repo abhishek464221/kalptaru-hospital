@@ -3,12 +3,20 @@
 @section('content')
 <div class="page-wrapper">
     <div class="content">
+        <h4 class="page-title">Gallery</h4>
         <div class="row">
-            <div class="col-sm-12">
-                <h4 class="page-title">Gallery</h4>
+            <div class="col-md-8">
+                
                 <a href="{{ route('admin.galleries.create') }}" class="btn btn-primary mb-3">
                     <i class="fa fa-plus"></i> Add Gallery Item
                 </a>
+            </div>
+            <div class="col-md-4 mb-3">
+                <input type="text"
+                    id="search"
+                    class="form-control"
+                    placeholder="Search..."
+                    value="{{ request('search') }}">
             </div>
         </div>
         <div class="row">

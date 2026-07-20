@@ -8,26 +8,27 @@ use Illuminate\Http\Request;
 
 class HolidayController extends Controller
 {
-    /**
-     * Display a listing of holidays.
-     */
-    public function index()
+    public function index(Request $request)
     {
-        $holidays = Holiday::all();
+        $holidays = Holiday::search(
+                $request->search,
+                [
+                    'name',
+                    'holiday_date',
+                    'description'
+                ]
+            )
+            ->latest()
+            ->paginate(10);
+
         return view('admin.holiday.index', compact('holidays'));
     }
 
-    /**
-     * Show the form for creating a new holiday.
-     */
     public function create()
     {
         return view('admin.holiday.create');
     }
 
-    /**
-     * Store a newly created holiday.
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -46,17 +47,11 @@ class HolidayController extends Controller
             ->with('success', 'Holiday created successfully.');
     }
 
-    /**
-     * Show the form for editing the specified holiday.
-     */
     public function edit(Holiday $holiday)
     {
         return view('admin.holiday.edit', compact('holiday'));
     }
 
-    /**
-     * Update the specified holiday.
-     */
     public function update(Request $request, Holiday $holiday)
     {
         $request->validate([
@@ -75,9 +70,6 @@ class HolidayController extends Controller
             ->with('success', 'Holiday updated successfully.');
     }
 
-    /**
-     * Remove the specified holiday.
-     */
     public function destroy(Holiday $holiday)
     {
         $holiday->delete();
